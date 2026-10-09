@@ -1,0 +1,105 @@
+# Local streaming stack: Darwin (ActiveMQ) -> Kafka -> Databricks.
+#   make up          start everything
+#   make connectors  register the Darwin source connector (first run only; config persists in Kafka)
+#
+# All secrets come from ../.env, mounted read-only into the containers that need it.
+
+name: darwin-lakehouse
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.9.0
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_RETENTION_HOURS: 72
+
+  # Kafka Connect with the Confluent ActiveMQ source connector (Darwin speaks OpenWire on 61616)
+  connect:
+    image: confluentinc/cp-kafka-connect:7.9.0
+    hostname: connect
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8083"
+    volumes:
+      # .env is valid Java properties syntax, so Connect's FileConfigProvider reads it directly
+      - ../.env:/etc/darwin/.env:ro
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:29092
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_GROUP_ID: darwin-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      CONNECT_CONFIG_PROVIDERS: file
+      CONNECT_CONFIG_PROVIDERS_FILE_CLASS: org.apache.kafka.common.config.provider.FileConfigProvider
+    command:
+      - bash
+      - -c
+      - |
+        confluent-hub install --no-prompt confluentinc/kafka-connect-activemq:13.0.13
+        /etc/confluent/docker/run
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.1.0
+    depends_on:
+      - kafka
+      - connect
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+
+  # Kafka Streams app: darwin-pushport-v16 -> Databricks bronze Delta table via Zerobus
+  darwin-zerobus:
+    build: ../streams
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    volumes:
+      - ../.env:/etc/darwin/.env:ro
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      INPUT_TOPIC: darwin-pushport-v16
+      DATABRICKS_TABLE: workspace.darwin.pushport_bronze
+
+  # Daily Darwin reference + timetable files: S3 -> Databricks Volume -> Delta tables
+  darwin-reference-sync:
+    build:
+      context: ..
+      dockerfile: infra/reference-sync.Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ../.env:/etc/darwin/.env:ro
+    environment:
+      DARWIN_ENV_FILE: /etc/darwin/.env
+      SYNC_INTERVAL_HOURS: "6"
+
+volumes:
+  kafka-data:

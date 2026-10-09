@@ -1,0 +1,15 @@
+relationship fact_location
+	fromColumn: fact_train_calls.tiploc
+	toColumn: dim_location.tiploc
+
+relationship fact_operator
+	fromColumn: fact_train_calls.toc
+	toColumn: dim_operator.toc
+
+relationship fact_late_reason
+	fromColumn: fact_train_calls.late_reason_code
+	toColumn: dim_late_reason.code
+
+relationship fact_date
+	fromColumn: fact_train_calls.ssd
+	toColumn: dim_date.Date

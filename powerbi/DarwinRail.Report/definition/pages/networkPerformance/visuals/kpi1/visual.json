@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "kpi1",
+  "position": {
+    "x": 336,
+    "y": 80,
+    "z": 3000,
+    "width": 296,
+    "height": 104,
+    "tabOrder": 3000
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Departures"
+                }
+              },
+              "queryRef": "fact_train_calls.Departures",
+              "nativeQueryRef": "Departures"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Departures recorded'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

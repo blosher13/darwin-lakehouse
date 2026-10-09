@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "kpi3",
+  "position": {
+    "x": 960,
+    "y": 80,
+    "z": 5000,
+    "width": 296,
+    "height": 104,
+    "tabOrder": 5000
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Avg departure delay"
+                }
+              },
+              "queryRef": "fact_train_calls.Avg departure delay",
+              "nativeQueryRef": "Avg departure delay"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Average departure delay'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

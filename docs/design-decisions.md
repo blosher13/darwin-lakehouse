@@ -1,0 +1,102 @@
+# Design decisions and lessons learned
+
+This is the reasoning behind the main choices in the pipeline, including the things that didn't
+work at first.
+
+## Ingestion
+
+### Kafka Connect over the ActiveMQ OpenWire port, not STOMP
+Darwin's broker exposes STOMP (61613) and OpenWire (61616). Kafka Connect's JMS-based connectors
+speak OpenWire. Two settings were needed:
+
+- **`jms.watchTopicAdvisories=false`.** The ActiveMQ client subscribes to the broker's advisory
+  topics by default. Darwin denies access to them, so the connection fails without this flag.
+  Connect's REST status still said `RUNNING`, and the error only showed up in the worker logs.
+- **A durable subscription with `jms.clientID` in the broker URL.** The connector has no client-ID
+  setting, but ActiveMQ requires one for durable subscriptions. With it, Darwin buffers messages
+  while the connector is down.
+
+### Kafka Streams → Zerobus for bronze
+Databricks runs in the cloud and can't reach a laptop's Kafka, so data has to be pushed out.
+[Zerobus Ingest](https://github.com/databricks/zerobus-sdk) writes rows straight into a Unity
+Catalog Delta table over gRPC. That needs no Databricks compute, which matters on Free Edition.
+
+**Delivery guarantee.** My first version waited for Zerobus acknowledgements inside a no-op state
+store's `flush()`, assuming Kafka Streams flushes stores before committing offsets. Watching the
+logs showed it never ran: in Kafka Streams 3.9, stores are flushed at checkpoints *after* the
+offset commit. The current design:
+
+1. disables interval commits (`commit.interval.ms` = max),
+2. queues rows with `ingestRecordOffset` (non-blocking),
+3. runs a wall-clock punctuator every 5 seconds that calls `flush()` (blocks until Zerobus
+   acknowledges every queued row) and only then calls `context.commit()`.
+
+A crash therefore replays at most about 5 seconds of messages. Silver deduplicates them.
+
+**Keeping Kafka data.** An early version of the stack kept Kafka's data inside the container.
+Moving the Compose project then dropped about 3 seconds of messages: Connect had written them to
+the old broker, and the Streams app had stopped just before reading them. Kafka now uses a named
+volume (`kafka-data`), with 72-hour retention.
+
+## Silver
+
+- **An explicit schema instead of inference.** The `from_xml` schema mirrors
+  `rttiPPTForecasts_v3.xsd`. Times stay `STRING` because Darwin mixes `HH:MM` and `HH:MM:SS`,
+  relative to the scheduled start date. `rid` and platform are strings too (`1A` is a valid platform).
+- **`FAILFAST`.** A message that doesn't match the schema fails the pipeline loudly instead of
+  silently becoming a NULL row.
+- **Namespace prefixes are stripped before parsing.** Spark keeps prefixes in field names
+  (`ns5:Location`), and Darwin's prefix numbering isn't a contract.
+- **Deduplication.** `dropDuplicatesWithinWatermark` on `(kafka_partition, kafka_offset)` with a
+  1-hour watermark on `ingested_at` covers the replay window above, with bounded state.
+
+## Gold
+
+TS messages are *deltas*. A message about an arrival doesn't repeat the departure estimate. For
+each train call (`rid`, TIPLOC, and the working times that identify the call, since circular
+routes visit a TIPLOC twice), gold takes the latest non-null value per field:
+
+```sql
+max_by(dep_at, IF(dep_at IS NULL, NULL, sequence_number))
+```
+
+Delays wrap past midnight: `pmod(actual - scheduled + 720, 1440) - 720`.
+
+**A null bug in the call key.** I built `call_id` with `concat_ws`, which *skips* NULLs. So a
+call with only a working arrival time (`wta=X`) and one with only a working departure time
+(`wtd=X`) hashed to the same key. A uniqueness check caught it, and each part is now coalesced
+to `'-'` first.
+
+## Reference data
+
+- **Timetable calling points.** These are `<OR>`, `<OPOR>`, `<IP>`, `<PP>`, `<DT>`… in route
+  order. Spark groups elements by name, which loses that order, so the files are parsed in Python
+  with `iterparse`, in constant memory, and uploaded as gzip JSON lines.
+- **Getting the files into Databricks.** Free Edition's serverless compute can't use third-party
+  AWS keys, so the files are downloaded outside Databricks, uploaded to a UC Volume, and loaded
+  with `read_files` on the SQL warehouse.
+- **Accumulating timetables.** `schedules` is merged by `rid`, and `schedule_locations` is
+  replaced per `rid`, so older silver rows still decode after the next day's file arrives.
+- **Unit tests found a real edge case.** Some journeys carry both an operational and a public
+  destination. The parser now prefers the public stop, the one passengers see.
+
+## Power BI without Power BI
+
+Power BI Desktop is Windows-only, and the project was built on macOS. I treated the report as code:
+
+- **Model:** the semantic model is TMDL, validated by loading it with
+  `Microsoft.AnalysisServices.Tabular.TmdlSerializer`. That's the same library Power BI uses,
+  run here in a .NET container. It catches syntax errors and broken references.
+- **Report:** the report is generated by `generate_report.py` and validated against Microsoft's
+  published PBIR JSON schemas. A second check confirms every field a visual uses exists in the
+  model as the right kind (column or measure).
+- **Measures:** DAX can't be evaluated without the engine. The preview renderer recomputes each
+  measure in SQL, so the numbers in the README images are an independent check of the DAX logic.
+
+## Platform constraints (Databricks Free Edition)
+
+- Serverless compute is limited. When the SQL warehouse was running, pipeline updates failed with
+  `RESOURCE_EXHAUSTED`. The job has retry-on-failure, and `darwin-deploy-pipeline --run-now`
+  waits for any active update before starting its own.
+- Lakeflow pipelines own their tables. Renaming the project meant renaming the existing pipeline,
+  not creating a new one; a new pipeline can't write to tables another pipeline owns.

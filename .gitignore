@@ -1,0 +1,32 @@
+# Secrets - never commit
+.env
+.ENV
+*.env
+!.env.example
+
+# Local leftovers
+_archive/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.virtual_env/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Java
+streams/target/
+streams/dependency-reduced-pom.xml
+
+# Power BI local state
+powerbi/**/.pbi/localSettings.json
+powerbi/**/.pbi/cache.abf
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,14 @@
+model Model
+	culture: en-GB
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-GB
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+ref table fact_train_calls
+ref table dim_location
+ref table dim_operator
+ref table dim_late_reason
+ref table dim_date

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "trainsByReason",
+  "position": {
+    "x": 24,
+    "y": 80,
+    "z": 2000,
+    "width": 608,
+    "height": 300,
+    "tabOrder": 2000
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_late_reason"
+                    }
+                  },
+                  "Property": "Reason"
+                }
+              },
+              "queryRef": "dim_late_reason.Reason",
+              "nativeQueryRef": "Reason"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Delayed trains"
+                }
+              },
+              "queryRef": "fact_train_calls.Delayed trains",
+              "nativeQueryRef": "Delayed trains"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fact_train_calls"
+                  }
+                },
+                "Property": "Delayed trains"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": false
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Trains delayed, by reason'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

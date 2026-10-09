@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "kpi0",
+  "position": {
+    "x": 24,
+    "y": 80,
+    "z": 2000,
+    "width": 296,
+    "height": 104,
+    "tabOrder": 2000
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Trains"
+                }
+              },
+              "queryRef": "fact_train_calls.Trains",
+              "nativeQueryRef": "Trains"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Trains tracked'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

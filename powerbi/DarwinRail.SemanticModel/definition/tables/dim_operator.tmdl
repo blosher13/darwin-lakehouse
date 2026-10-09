@@ -1,0 +1,25 @@
+/// Train operating companies.
+table dim_operator
+
+	column toc
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: toc
+
+	column Operator
+		dataType: string
+		summarizeBy: none
+		sourceColumn: toc_name
+
+	partition dim_operator = m
+		mode: import
+		source =
+				let
+				    Source = Databricks.Catalogs(DatabricksHost, DatabricksHttpPath, [Catalog = null, Database = null, EnableAutomaticProxyDiscovery = null]),
+				    Catalog = Source{[Name = "workspace", Kind = "Database"]}[Data],
+				    Schema = Catalog{[Name = "darwin", Kind = "Schema"]}[Data],
+				    Operators = Schema{[Name = "operators", Kind = "Table"]}[Data],
+				    Selected = Table.SelectColumns(Operators, {"toc", "toc_name"})
+				in
+				    Selected

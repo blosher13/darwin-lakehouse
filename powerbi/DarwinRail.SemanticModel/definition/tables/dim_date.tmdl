@@ -1,0 +1,19 @@
+/// Calendar covering the dates in fact_train_calls.
+table dim_date
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: dd mmm yyyy
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Date]
+
+	column Weekday = FORMAT ( dim_date[Date], "ddd" )
+		dataType: string
+		summarizeBy: none
+
+	partition dim_date = calculated
+		mode: import
+		source = CALENDAR ( MIN ( fact_train_calls[ssd] ), MAX ( fact_train_calls[ssd] ) )

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "stationTable",
+  "position": {
+    "x": 24,
+    "y": 464,
+    "z": 8000,
+    "width": 1232,
+    "height": 232,
+    "tabOrder": 8000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_location"
+                    }
+                  },
+                  "Property": "Station"
+                }
+              },
+              "queryRef": "dim_location.Station",
+              "nativeQueryRef": "Station"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_location"
+                    }
+                  },
+                  "Property": "crs"
+                }
+              },
+              "queryRef": "dim_location.crs",
+              "nativeQueryRef": "crs",
+              "displayName": "CRS"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Departures"
+                }
+              },
+              "queryRef": "fact_train_calls.Departures",
+              "nativeQueryRef": "Departures"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Delay minutes"
+                }
+              },
+              "queryRef": "fact_train_calls.Delay minutes",
+              "nativeQueryRef": "Delay minutes"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Avg departure delay"
+                }
+              },
+              "queryRef": "fact_train_calls.Avg departure delay",
+              "nativeQueryRef": "Avg departure delay"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Within 5 min %"
+                }
+              },
+              "queryRef": "fact_train_calls.Within 5 min %",
+              "nativeQueryRef": "Within 5 min %"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fact_train_calls"
+                  }
+                },
+                "Property": "Delay minutes"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": false
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Stations ranked by total delay minutes'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

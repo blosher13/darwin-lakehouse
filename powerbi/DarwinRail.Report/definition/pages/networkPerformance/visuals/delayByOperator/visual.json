@@ -1,0 +1,96 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "delayByOperator",
+  "position": {
+    "x": 648,
+    "y": 200,
+    "z": 7000,
+    "width": 608,
+    "height": 248,
+    "tabOrder": 7000
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_operator"
+                    }
+                  },
+                  "Property": "Operator"
+                }
+              },
+              "queryRef": "dim_operator.Operator",
+              "nativeQueryRef": "Operator"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Avg departure delay"
+                }
+              },
+              "queryRef": "fact_train_calls.Avg departure delay",
+              "nativeQueryRef": "Avg departure delay"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fact_train_calls"
+                  }
+                },
+                "Property": "Avg departure delay"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": false
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Average departure delay by operator'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PportTimetable timetableID="20261009020534" xmlns="http://www.thalesgroup.com/rtti/XmlTimetable/v8">
+  <Journey rid="202610097682962" uid="L82962" trainId="2K65" ssd="2026-10-09" toc="SW">
+    <OPOR tpl="WATRLMS" act="TB" wtd="21:30" />
+    <OR tpl="WATRLMN" act="TB" plat="11" ptd="21:30" wtd="21:30" />
+    <PP tpl="VAUXHLM" wtp="21:33:30" />
+    <IP tpl="CLPHMJC" act="T " plat="11" pta="21:36" ptd="21:36" wta="21:35:30" wtd="21:36:30" />
+    <IP tpl="WIMBLDN" act="T " can="true" pta="21:43" ptd="21:44" wta="21:43" wtd="21:44" />
+    <DT tpl="WATRLMN" act="TF" plat="18" pta="22:46" wta="22:46" />
+    <cancelReason tiploc="WIMBLDN">541</cancelReason>
+  </Journey>
+  <Journey rid="202610097128250" uid="G28250" trainId="5Y91" ssd="2026-10-09" toc="GN" trainCat="EE" isPassengerSvc="false">
+    <OPOR tpl="WLWYCSD" act="TB" wtd="03:56" />
+    <OPDT tpl="WLWYNGC" act="TF" wta="03:58" />
+  </Journey>
+  <Association tiploc="CLPHMJC" category="VV">
+    <main rid="202610097682962" wta="21:35:30" wtd="21:36:30" />
+    <assoc rid="202610097128250" wtd="21:40" />
+  </Association>
+</PportTimetable>

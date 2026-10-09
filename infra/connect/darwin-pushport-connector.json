@@ -1,0 +1,17 @@
+{
+  "name": "darwin-pushport",
+  "config": {
+    "connector.class": "io.confluent.connect.activemq.ActiveMQSourceConnector",
+    "tasks.max": "1",
+    "activemq.url": "tcp://darwin-dist-44ae45.nationalrail.co.uk:61616?jms.clientID=${file:/etc/darwin/.env:username}-kafka-connect&jms.watchTopicAdvisories=false",
+    "activemq.username": "${file:/etc/darwin/.env:username}",
+    "activemq.password": "${file:/etc/darwin/.env:national_rail_password}",
+    "jms.destination.type": "topic",
+    "jms.destination.name": "darwin.pushport-v16",
+    "jms.subscription.durable": "true",
+    "jms.subscription.name": "kafka-connect",
+    "kafka.topic": "darwin-pushport-v16",
+    "confluent.topic.bootstrap.servers": "kafka:29092",
+    "confluent.topic.replication.factor": "1"
+  }
+}

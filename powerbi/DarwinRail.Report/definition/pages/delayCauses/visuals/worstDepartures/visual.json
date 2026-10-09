@@ -1,0 +1,180 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "worstDepartures",
+  "position": {
+    "x": 24,
+    "y": 396,
+    "z": 4000,
+    "width": 1232,
+    "height": 300,
+    "tabOrder": 4000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "headcode"
+                }
+              },
+              "queryRef": "fact_train_calls.headcode",
+              "nativeQueryRef": "headcode",
+              "displayName": "Headcode"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_operator"
+                    }
+                  },
+                  "Property": "Operator"
+                }
+              },
+              "queryRef": "dim_operator.Operator",
+              "nativeQueryRef": "Operator"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "Journey"
+                }
+              },
+              "queryRef": "fact_train_calls.Journey",
+              "nativeQueryRef": "Journey"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_location"
+                    }
+                  },
+                  "Property": "Station"
+                }
+              },
+              "queryRef": "dim_location.Station",
+              "nativeQueryRef": "Station"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "scheduled_departure"
+                }
+              },
+              "queryRef": "fact_train_calls.scheduled_departure",
+              "nativeQueryRef": "scheduled_departure",
+              "displayName": "Scheduled"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "actual_departure"
+                }
+              },
+              "queryRef": "fact_train_calls.actual_departure",
+              "nativeQueryRef": "actual_departure",
+              "displayName": "Departed"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_train_calls"
+                    }
+                  },
+                  "Property": "departure_delay_min"
+                }
+              },
+              "queryRef": "fact_train_calls.departure_delay_min",
+              "nativeQueryRef": "departure_delay_min",
+              "displayName": "Minutes late"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_late_reason"
+                    }
+                  },
+                  "Property": "Reason"
+                }
+              },
+              "queryRef": "dim_late_reason.Reason",
+              "nativeQueryRef": "Reason"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fact_train_calls"
+                  }
+                },
+                "Property": "departure_delay_min"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": false
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Most delayed departures'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

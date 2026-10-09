@@ -1,0 +1,30 @@
+/// Darwin locations: TIPLOC -> station name and CRS code.
+table dim_location
+
+	column tiploc
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: tiploc
+
+	column crs
+		dataType: string
+		summarizeBy: none
+		sourceColumn: crs
+
+	column Station
+		dataType: string
+		summarizeBy: none
+		sourceColumn: location_name
+
+	partition dim_location = m
+		mode: import
+		source =
+				let
+				    Source = Databricks.Catalogs(DatabricksHost, DatabricksHttpPath, [Catalog = null, Database = null, EnableAutomaticProxyDiscovery = null]),
+				    Catalog = Source{[Name = "workspace", Kind = "Database"]}[Data],
+				    Schema = Catalog{[Name = "darwin", Kind = "Schema"]}[Data],
+				    Locations = Schema{[Name = "locations", Kind = "Table"]}[Data],
+				    Selected = Table.SelectColumns(Locations, {"tiploc", "crs", "location_name"})
+				in
+				    Selected
