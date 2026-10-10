@@ -19,7 +19,7 @@ table fact_train_calls
 	/// Share of departures leaving at or before the public timetable time (to the minute).
 	measure 'On time %' = ```
 			DIVIDE (
-			    CALCULATE ( [Departures], fact_train_calls[departure_delay_minutes] <= 0 ),
+			    CALCULATE ( [Departures], KEEPFILTERS ( fact_train_calls[departure_delay_minutes] <= 0 ) ),
 			    [Departures]
 			)
 			```
@@ -28,7 +28,7 @@ table fact_train_calls
 	/// Share of departures within 5 minutes of the public timetable (PPM-style threshold).
 	measure 'Within 5 minutes %' = ```
 			DIVIDE (
-			    CALCULATE ( [Departures], fact_train_calls[departure_delay_minutes] <= 5 ),
+			    CALCULATE ( [Departures], KEEPFILTERS ( fact_train_calls[departure_delay_minutes] <= 5 ) ),
 			    [Departures]
 			)
 			```
