@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "trainsByReason",
   "position": {
-    "x": 24,
-    "y": 80,
+    "x": 23.327693931221631,
+    "y": 156.4327710681921,
     "z": 2000,
-    "width": 608,
-    "height": 300,
+    "height": 223.67141828171327,
+    "width": 609.26447679190608,
     "tabOrder": 2000
   },
   "visual": {
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "dim_late_reason.Reason",
-              "nativeQueryRef": "Reason"
+              "nativeQueryRef": "Reason",
+              "active": true
             }
           ]
         },
@@ -65,11 +66,9 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -91,6 +90,39 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "70d1fa7e67dbede73bf0",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_late_reason"
+              }
+            },
+            "Property": "Reason"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "168dba93b2fa958fccf7",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Delayed trains"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

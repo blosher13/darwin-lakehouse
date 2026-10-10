@@ -1,178 +1,213 @@
 /// One row per train call (train x location x scheduled time) from workspace.darwin.fact_train_calls.
 table fact_train_calls
+	lineageTag: 6e4eb2cc-980f-4be5-9bc6-d01e512d6a11
 
 	/// Distinct trains (RIDs) in the current filter context.
 	measure Trains = DISTINCTCOUNT(fact_train_calls[train_service_id])
 		formatString: #,0
+		lineageTag: 96aca64e-f260-4e82-b818-5cac973fad29
 
 	/// Passenger departures from public stops with an actual departure time.
-	measure Departures = ```
+	measure Departures =
 			CALCULATE (
 			    COUNTROWS ( fact_train_calls ),
-			    NOT ISBLANK ( fact_train_calls[departure_delay_minutes] ),
+			    KEEPFILTERS ( NOT ISBLANK ( fact_train_calls[departure_delay_minutes] ) ),
 			    fact_train_calls[call_type] = "Public stop",
 			    fact_train_calls[is_passenger_service] = TRUE ()
 			)
-			```
 		formatString: #,0
+		lineageTag: e0ee070e-4cd3-44f1-af16-14a5198655e1
 
 	/// Share of departures leaving at or before the public timetable time (to the minute).
-	measure 'On time %' = ```
+	measure 'On time %' =
 			DIVIDE (
 			    CALCULATE ( [Departures], KEEPFILTERS ( fact_train_calls[departure_delay_minutes] <= 0 ) ),
 			    [Departures]
 			)
-			```
 		formatString: 0.0%
+		lineageTag: b0e7d28c-871c-4b16-b69b-bf9c4b211906
 
 	/// Share of departures within 5 minutes of the public timetable (PPM-style threshold).
-	measure 'Within 5 minutes %' = ```
+	measure 'Within 5 minutes %' =
 			DIVIDE (
 			    CALCULATE ( [Departures], KEEPFILTERS ( fact_train_calls[departure_delay_minutes] <= 5 ) ),
 			    [Departures]
 			)
-			```
 		formatString: 0.0%
+		lineageTag: ebd1ec0f-ed0c-4495-aaeb-45afa20570a9
 
 	/// Mean departure delay in minutes (early departures count as negative).
-	measure 'Average departure delay' = ```
+	measure 'Average departure delay' =
 			CALCULATE (
 			    AVERAGE ( fact_train_calls[departure_delay_minutes] ),
 			    fact_train_calls[call_type] = "Public stop",
 			    fact_train_calls[is_passenger_service] = TRUE ()
 			)
-			```
 		formatString: 0.0" min"
+		lineageTag: 16faf38f-f602-49ae-88cb-40485dcfc6a9
 
 	/// Total minutes late across late departures.
-	measure 'Delay minutes' = ```
+	measure 'Delay minutes' =
 			CALCULATE (
 			    SUM ( fact_train_calls[departure_delay_minutes] ),
 			    fact_train_calls[departure_delay_minutes] > 0,
 			    fact_train_calls[call_type] = "Public stop",
 			    fact_train_calls[is_passenger_service] = TRUE ()
 			)
-			```
 		formatString: #,0
+		lineageTag: 4fd85ead-6f6c-474d-bc2d-92ef18ae5332
 
 	/// Trains carrying a Darwin late-running reason.
-	measure 'Delayed trains' = ```
+	measure 'Delayed trains' =
 			CALCULATE (
 			    DISTINCTCOUNT ( fact_train_calls[train_service_id] ),
 			    NOT ISBLANK ( fact_train_calls[late_reason_code] )
 			)
-			```
 		formatString: #,0
+		lineageTag: 807a9a5d-3917-469e-91d0-340360f302eb
 
 	column call_id
 		dataType: string
 		isHidden
+		lineageTag: 22ac3764-4e70-46ae-a23b-97a2ad3eeca0
 		summarizeBy: none
 		sourceColumn: call_id
 
 	column train_service_id
 		dataType: string
+		lineageTag: 11c47447-e548-43d0-96dc-47a97df85057
 		summarizeBy: none
 		sourceColumn: train_service_id
 
 	column scheduled_start_date
 		dataType: dateTime
 		formatString: dd mmm yyyy
+		lineageTag: 9aa58aa7-fd37-4190-9bda-1d16bad6f90c
 		summarizeBy: none
 		sourceColumn: scheduled_start_date
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column headcode
 		dataType: string
+		lineageTag: 77fc89ba-4cbe-4d30-909e-023edd89164a
 		summarizeBy: none
 		sourceColumn: headcode
 
 	column operator_code
 		dataType: string
 		isHidden
+		lineageTag: 0414e1d6-332f-451f-9e76-e2b0a7ae9b70
 		summarizeBy: none
 		sourceColumn: operator_code
 
 	column train_category
 		dataType: string
+		lineageTag: 2abd8ffd-47a5-47c3-bb42-41ff9a9999f0
 		summarizeBy: none
 		sourceColumn: train_category
 
 	column is_passenger_service
 		dataType: boolean
 		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: c91eea2b-c123-4954-bbf8-0d4421e21432
 		summarizeBy: none
 		sourceColumn: is_passenger_service
 
 	column origin_name
 		dataType: string
+		lineageTag: 9348c4d2-aae4-4c6c-be3a-98dd32664b4c
 		summarizeBy: none
 		sourceColumn: origin_name
 
 	column destination_name
 		dataType: string
+		lineageTag: bb31cfed-825c-4bc4-ba6b-6484f7c826a7
 		summarizeBy: none
 		sourceColumn: destination_name
 
 	column location_code
 		dataType: string
 		isHidden
+		lineageTag: 8d9ade38-5f14-41f3-b7bf-b802533fc1c5
 		summarizeBy: none
 		sourceColumn: location_code
 
 	column call_type
 		dataType: string
+		lineageTag: 84c35d26-8c94-4901-bb7d-0313d1f1da17
 		summarizeBy: none
 		sourceColumn: call_type
 
 	column scheduled_departure
 		dataType: string
+		lineageTag: ecef86a8-bcf9-486a-afa7-dce587466e33
 		summarizeBy: none
 		sourceColumn: scheduled_departure
 
 	column scheduled_timestamp
 		dataType: dateTime
 		formatString: dd mmm hh:nn
+		lineageTag: e2e7d7c2-b88e-429b-b7f4-81a94d70e916
 		summarizeBy: none
 		sourceColumn: scheduled_timestamp
 
+		variation Variation
+			isDefault
+			relationship: 4dc7f4a5-dcb9-4d1f-b11c-3d6d5a446be2
+			defaultHierarchy: LocalDateTable_82d812e2-af01-4859-b9f6-098f13392c30.'Date Hierarchy'
+
 	column actual_departure
 		dataType: string
+		lineageTag: 7aef7632-c092-4fb8-a137-e04c518a3968
 		summarizeBy: none
 		sourceColumn: actual_departure
 
 	column departure_delay_minutes
 		dataType: int64
 		formatString: 0
-		summarizeBy: none
+		lineageTag: ae1d67b0-90db-4b1f-9c29-a7520cbed8fb
+		summarizeBy: sum
 		sourceColumn: departure_delay_minutes
+
+		annotation SummarizationSetBy = Automatic
 
 	column arrival_delay_minutes
 		dataType: int64
 		formatString: 0
-		summarizeBy: none
+		lineageTag: ba5a8018-c0bd-4d40-ab2e-33e6f284046b
+		summarizeBy: sum
 		sourceColumn: arrival_delay_minutes
+
+		annotation SummarizationSetBy = Automatic
 
 	column platform
 		dataType: string
+		lineageTag: ce271751-fad5-4b75-aeab-5da3af06b89d
 		summarizeBy: none
 		sourceColumn: platform
 
 	column late_reason_code
 		dataType: string
 		isHidden
+		lineageTag: e32d2a38-df80-46ca-bcde-afa78b85df28
 		summarizeBy: none
 		sourceColumn: late_reason_code
 
 	column Journey = fact_train_calls[origin_name] & " → " & fact_train_calls[destination_name]
 		dataType: string
+		lineageTag: 05347b90-149f-4672-9f8c-bb1ea524f97e
 		summarizeBy: none
 
 	column 'Scheduled hour' = HOUR ( fact_train_calls[scheduled_timestamp] )
 		dataType: int64
 		formatString: 00
-		summarizeBy: none
+		lineageTag: a7a54762-6ec8-4b2c-814e-afeafd4cfc2b
+		summarizeBy: sum
 
-	column 'Delay band' = ```
+		annotation SummarizationSetBy = Automatic
+
+	column 'Delay band' =
 			VAR d = fact_train_calls[departure_delay_minutes]
 			RETURN
 			    SWITCH (
@@ -185,19 +220,21 @@ table fact_train_calls
 			        d <= 30, "16–30 min",
 			        "Over 30 min"
 			    )
-			```
 		dataType: string
+		lineageTag: e17b57ba-0b75-4cdb-9c78-56c0d4c0a7d6
 		summarizeBy: none
 		sortByColumn: 'Delay band order'
 
-	column 'Delay band order' = ```
+	column 'Delay band order' =
 			VAR d = fact_train_calls[departure_delay_minutes]
 			RETURN
 			    SWITCH ( TRUE (), ISBLANK ( d ), BLANK (), d <= 0, 1, d <= 2, 2, d <= 5, 3, d <= 15, 4, d <= 30, 5, 6 )
-			```
 		dataType: int64
 		isHidden
-		summarizeBy: none
+		lineageTag: 3ad13ae0-1ed4-4ab4-a3f2-5a5cb9b2175b
+		summarizeBy: sum
+
+		annotation SummarizationSetBy = Automatic
 
 	partition fact_train_calls = m
 		mode: import
@@ -214,3 +251,4 @@ table fact_train_calls
 				        "platform", "late_reason_code"})
 				in
 				    Selected
+

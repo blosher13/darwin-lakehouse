@@ -7,8 +7,19 @@ model Model
 		legacyRedirects
 		returnErrorValuesAsNull
 
+annotation PBI_QueryOrder = ["fact_train_calls","dim_location","dim_operator","dim_late_reason","DatabricksHost","DatabricksHttpPath","DatabricksCatalog","DatabricksSchema"]
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_ProTooling = ["DevMode"]
+
 ref table fact_train_calls
 ref table dim_location
 ref table dim_operator
 ref table dim_late_reason
 ref table dim_date
+ref table DateTableTemplate_2a5ef898-1cfe-46d3-a003-819ce36ec159
+ref table LocalDateTable_82d812e2-af01-4859-b9f6-098f13392c30
+
+ref cultureInfo en-GB
+

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "DarwinRail"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "a9197e86-bf51-4e92-8a7a-bc0304d0e897"
+  }
+}

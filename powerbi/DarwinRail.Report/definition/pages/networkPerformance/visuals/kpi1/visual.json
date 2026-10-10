@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "kpi1",
   "position": {
-    "x": 336,
-    "y": 80,
+    "x": 327.95993232717467,
+    "y": 167.410509388767,
     "z": 3000,
-    "width": 296,
     "height": 104,
+    "width": 296,
     "tabOrder": 3000
   },
   "visual": {
@@ -33,7 +33,6 @@
         }
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -55,6 +54,25 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "666a17e2141c0fcf46e2",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Departures"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

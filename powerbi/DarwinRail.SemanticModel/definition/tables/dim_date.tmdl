@@ -1,19 +1,23 @@
 /// Calendar covering the dates in fact_train_calls.
 table dim_date
+	lineageTag: 2e1addb6-ffd1-4b18-a975-4537effe591e
 	dataCategory: Time
 
 	column Date
 		dataType: dateTime
 		isKey
 		formatString: dd mmm yyyy
+		lineageTag: e5ce8ddc-39e2-492e-8425-e8359b6f2000
 		summarizeBy: none
 		isNameInferred
 		sourceColumn: [Date]
 
 	column Weekday = FORMAT ( dim_date[Date], "ddd" )
 		dataType: string
+		lineageTag: c23fae5e-e80d-4da8-952d-e78006f5e6e5
 		summarizeBy: none
 
 	partition dim_date = calculated
 		mode: import
 		source = CALENDAR ( MIN ( fact_train_calls[scheduled_start_date] ), MAX ( fact_train_calls[scheduled_start_date] ) )
+

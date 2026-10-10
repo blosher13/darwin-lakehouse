@@ -1,14 +1,17 @@
 /// Darwin late-running reasons, shortened for display ("This train has been delayed by a fault..." -> "A fault...").
 table dim_late_reason
+	lineageTag: 9de70fce-73f7-4917-969d-c536a7433ae7
 
 	column reason_code
 		dataType: string
 		isKey
+		lineageTag: f469b9e2-8eaa-4fcc-a0cb-bb120f16ae47
 		summarizeBy: none
 		sourceColumn: reason_code
 
 	column Reason
 		dataType: string
+		lineageTag: 8eec1b4a-1282-4409-a362-28c6754b3284
 		summarizeBy: none
 		sourceColumn: reason
 
@@ -30,3 +33,4 @@ table dim_late_reason
 				    Selected = Table.SelectColumns(Shortened, {"reason_code", "reason"})
 				in
 				    Selected
+

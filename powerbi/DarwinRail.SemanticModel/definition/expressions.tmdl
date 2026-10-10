@@ -1,16 +1,25 @@
 /// Databricks workspace hostname without https:// - e.g. dbc-1a2b3c4d-5e6f.cloud.databricks.com
 /// (SQL Warehouses > your warehouse > Connection details > Server hostname).
-expression DatabricksHost = "<your-workspace>.cloud.databricks.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+expression DatabricksHost = "dbc-43db7be9-e8fd.cloud.databricks.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 6461a948-d0f7-4bf7-ba9d-41dafc91d0a0
+
 	annotation PBI_ResultType = Text
 
 /// HTTP path of the SQL warehouse (SQL Warehouses > your warehouse > Connection details > HTTP path).
-expression DatabricksHttpPath = "/sql/1.0/warehouses/<warehouse-id>" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+expression DatabricksHttpPath = "/sql/1.0/warehouses/e26780c03dd20ee1" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: fafef937-3ef2-4be8-a857-840c53eaacda
+
 	annotation PBI_ResultType = Text
 
 /// Unity Catalog catalog holding the Darwin tables (databricks_catalog in .env).
 expression DatabricksCatalog = "workspace" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 75e094a3-20f1-47d6-ac94-a5ce397d68a7
+
 	annotation PBI_ResultType = Text
 
 /// Schema holding the Darwin tables (databricks_schema in .env).
 expression DatabricksSchema = "darwin" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 97152afa-4b4a-436d-9110-747c0eb330ca
+
 	annotation PBI_ResultType = Text
+

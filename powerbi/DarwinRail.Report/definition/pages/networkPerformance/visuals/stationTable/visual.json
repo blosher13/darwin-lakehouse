@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "stationTable",
   "position": {
     "x": 24,
     "y": 464,
     "z": 8000,
-    "width": 1232,
     "height": 232,
+    "width": 1232,
     "tabOrder": 8000
   },
   "visual": {
@@ -118,11 +118,9 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -144,6 +142,95 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "d7efe2b6fbc5f6058726",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_location"
+              }
+            },
+            "Property": "Station"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "71a0300f2930531b2617",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_location"
+              }
+            },
+            "Property": "station_code"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "ec7f8923ba6f18a4a744",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Departures"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "09aee007ab0c503b0364",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Delay minutes"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "f88e46d906b60ca8eeec",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Average departure delay"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "c0d8d62878b4f9f9c296",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Within 5 minutes %"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

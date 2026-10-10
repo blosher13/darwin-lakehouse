@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "delayDistribution",
   "position": {
-    "x": 648,
-    "y": 80,
+    "x": 647.68656091391824,
+    "y": 156.4327710681921,
     "z": 3000,
-    "width": 608,
-    "height": 300,
+    "height": 223.67141828171327,
+    "width": 607.89225950183425,
     "tabOrder": 3000
   },
   "visual": {
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "fact_train_calls.Delay band",
-              "nativeQueryRef": "Delay band"
+              "nativeQueryRef": "Delay band",
+              "active": true
             }
           ]
         },
@@ -65,11 +66,9 @@
             },
             "direction": "Ascending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -91,6 +90,39 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "3a403c0ba623d5f95e94",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Delay band"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "ae4a24aaa06137d7c765",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Departures"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

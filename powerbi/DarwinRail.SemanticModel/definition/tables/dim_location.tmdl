@@ -1,19 +1,23 @@
 /// Darwin locations: TIPLOC -> station name and CRS code.
 table dim_location
+	lineageTag: e8067dd5-255a-4a68-af70-e4dc6487612f
 
 	column location_code
 		dataType: string
 		isKey
+		lineageTag: d005173d-c290-4c5e-b63b-d0843583d7ff
 		summarizeBy: none
 		sourceColumn: location_code
 
 	column station_code
 		dataType: string
+		lineageTag: ae877a53-0f36-4a3f-b325-af30e50306e3
 		summarizeBy: none
 		sourceColumn: station_code
 
 	column Station
 		dataType: string
+		lineageTag: 660de66e-855f-42cc-832e-c99ab53af532
 		summarizeBy: none
 		sourceColumn: location_name
 
@@ -28,3 +32,4 @@ table dim_location
 				    Selected = Table.SelectColumns(Locations, {"location_code", "station_code", "location_name"})
 				in
 				    Selected
+

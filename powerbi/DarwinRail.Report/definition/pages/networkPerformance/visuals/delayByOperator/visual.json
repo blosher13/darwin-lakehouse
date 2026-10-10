@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "delayByOperator",
   "position": {
-    "x": 648,
-    "y": 200,
+    "x": 647.68656091391824,
+    "y": 290.91006549523445,
     "z": 7000,
-    "width": 608,
-    "height": 248,
+    "height": 156.4327710681921,
+    "width": 607.89225950183425,
     "tabOrder": 7000
   },
   "visual": {
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "dim_operator.Operator",
-              "nativeQueryRef": "Operator"
+              "nativeQueryRef": "Operator",
+              "active": true
             }
           ]
         },
@@ -65,11 +66,9 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -91,6 +90,39 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "365ffb41de42250cf268",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_operator"
+              }
+            },
+            "Property": "Operator"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "c138b1d7614c1161b6a8",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Average departure delay"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

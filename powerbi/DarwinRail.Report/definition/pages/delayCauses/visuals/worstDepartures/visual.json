@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "worstDepartures",
   "position": {
     "x": 24,
     "y": 396,
     "z": 4000,
-    "width": 1232,
     "height": 300,
+    "width": 1232,
     "tabOrder": 4000
   },
   "visual": {
@@ -149,11 +149,9 @@
             },
             "direction": "Descending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -175,6 +173,123 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "af3fe2424547c2ed17db",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "headcode"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "c8ad79de3b17c66c16b2",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_operator"
+              }
+            },
+            "Property": "Operator"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "8e396b768b80dc1a28c7",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Journey"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "4f81d6326207bdc65b96",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_location"
+              }
+            },
+            "Property": "Station"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "12b7c2ef1ce23746d5b0",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "scheduled_departure"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "a206137866b5cf0b323f",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "actual_departure"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "78a3bcff4d1b5b6883d3",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "departure_delay_minutes"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "b016e96221456f30b5db",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "dim_late_reason"
+              }
+            },
+            "Property": "Reason"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
   }
 }

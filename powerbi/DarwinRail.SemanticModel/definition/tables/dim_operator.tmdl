@@ -1,14 +1,17 @@
 /// Train operating companies.
 table dim_operator
+	lineageTag: c4121233-e8e5-4c51-9214-7fc51991ed1a
 
 	column operator_code
 		dataType: string
 		isKey
+		lineageTag: 78473e2f-f040-4cee-ae35-3fbea239bc52
 		summarizeBy: none
 		sourceColumn: operator_code
 
 	column Operator
 		dataType: string
+		lineageTag: 2bc1c36a-3a2c-42e8-b65a-096025ec1d5c
 		summarizeBy: none
 		sourceColumn: operator_name
 
@@ -23,3 +26,4 @@ table dim_operator
 				    Selected = Table.SelectColumns(Operators, {"operator_code", "operator_name"})
 				in
 				    Selected
+

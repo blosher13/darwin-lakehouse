@@ -13,3 +13,9 @@ relationship fact_late_reason
 relationship fact_date
 	fromColumn: fact_train_calls.scheduled_start_date
 	toColumn: dim_date.Date
+
+relationship 4dc7f4a5-dcb9-4d1f-b11c-3d6d5a446be2
+	joinOnDateBehavior: datePartOnly
+	fromColumn: fact_train_calls.scheduled_timestamp
+	toColumn: LocalDateTable_82d812e2-af01-4859-b9f6-098f13392c30.Date
+

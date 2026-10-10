@@ -1,12 +1,12 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "withinFiveByHour",
   "position": {
-    "x": 24,
-    "y": 200,
+    "x": 23.327693931221631,
+    "y": 290.91006549523445,
     "z": 6000,
-    "width": 608,
-    "height": 248,
+    "height": 156.4327710681921,
+    "width": 609.26447679190608,
     "tabOrder": 6000
   },
   "visual": {
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "fact_train_calls.Scheduled hour",
-              "nativeQueryRef": "Scheduled hour"
+              "nativeQueryRef": "Scheduled hour",
+              "active": true
             }
           ]
         },
@@ -65,11 +66,9 @@
             },
             "direction": "Ascending"
           }
-        ],
-        "isDefaultSort": false
+        ]
       }
     },
-    "drillFilterOtherVisuals": true,
     "visualContainerObjects": {
       "title": [
         {
@@ -91,6 +90,39 @@
           }
         }
       ]
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "9c5719e6fa2ac2fe3234",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Scheduled hour"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "08a1896bd094ed26a006",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "fact_train_calls"
+              }
+            },
+            "Property": "Within 5 minutes %"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }
