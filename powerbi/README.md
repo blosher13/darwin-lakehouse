@@ -18,15 +18,18 @@ Star schema, import mode:
 
 | Table | Source | Key |
 |---|---|---|
-| `fact_train_calls` | `workspace.darwin.fact_train_calls` | `call_id` |
-| `dim_location` | `workspace.darwin.locations` | `tiploc` |
-| `dim_operator` | `workspace.darwin.operators` | `toc` |
-| `dim_late_reason` | `workspace.darwin.late_reasons` (text shortened in Power Query) | `code` |
-| `dim_date` | DAX `CALENDAR` over `fact_train_calls[ssd]` | `Date` |
+| `fact_train_calls` | `<catalog>.<schema>.fact_train_calls` | `call_id` |
+| `dim_location` | `locations` | `location_code` |
+| `dim_operator` | `operators` | `operator_code` |
+| `dim_late_reason` | `late_reasons` (text shortened in Power Query) | `reason_code` |
+| `dim_date` | DAX `CALENDAR` over `fact_train_calls[scheduled_start_date]` | `Date` |
 
-Measures: `Trains`, `Departures`, `On time %`, `Within 5 min %`, `Avg departure delay`,
+Measures: `Trains`, `Departures`, `On time %`, `Within 5 minutes %`, `Average departure delay`,
 `Delay minutes` and `Delayed trains`. Every measure carries a description in the model.
 Departure measures count **passenger trains at public stops** against the **public timetable**.
+
+Connection parameters: `DatabricksHost`, `DatabricksHttpPath`, `DatabricksCatalog` (default
+`workspace`) and `DatabricksSchema` (default `darwin`).
 
 ## Pages
 
@@ -43,8 +46,10 @@ telling colours apart.
 1. Open `DarwinRail.pbip` in Power BI Desktop (Windows). If prompted, enable *Power BI Project
    (.pbip) save option* and *Store reports using enhanced metadata format (PBIR)* under
    Options > Preview features.
-2. **Transform data > Edit parameters:** set `DatabricksHost` and `DatabricksHttpPath`. You'll
-   find both under SQL Warehouses > *your warehouse* > Connection details.
+2. **Transform data > Edit parameters:** replace the placeholders in `DatabricksHost` and
+   `DatabricksHttpPath`. You'll find both under SQL Warehouses > *your warehouse* > Connection
+   details. Change `DatabricksCatalog` and `DatabricksSchema` only if you changed
+   `databricks_catalog` / `databricks_schema` in `.env`.
 3. **Refresh,** and authenticate with **Personal Access Token** using your Databricks token.
 4. **Publish** to a Power BI workspace if you want to share it. Alternatively, in Databricks you
    can use *Catalog Explorer > Use with BI tools > Publish to Power BI workspace* to create the
@@ -64,5 +69,5 @@ telling colours apart.
 ```bash
 python powerbi/generate_report.py     # after editing the layout
 python powerbi/validate_pbir.py       # schemas + field references
-pip install matplotlib && python powerbi/render_preview.py   # refresh README images (needs .env)
+pip install -e '.[preview]' && python powerbi/render_preview.py   # refresh README images (needs .env)
 ```

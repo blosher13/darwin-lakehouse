@@ -23,11 +23,11 @@
                       "Entity": "fact_train_calls"
                     }
                   },
-                  "Property": "Within 5 min %"
+                  "Property": "Within 5 minutes %"
                 }
               },
-              "queryRef": "fact_train_calls.Within 5 min %",
-              "nativeQueryRef": "Within 5 min %"
+              "queryRef": "fact_train_calls.Within 5 minutes %",
+              "nativeQueryRef": "Within 5 minutes %"
             }
           ]
         }

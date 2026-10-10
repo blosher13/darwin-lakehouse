@@ -1,10 +1,11 @@
 """Deploys (or updates) the medallion pipeline and its schedule in Databricks.
 
 * uploads pipelines/darwin_pipeline.py to /Workspace/Users/<you>/darwin/
-* creates/updates serverless Lakeflow pipeline "darwin-medallion" (silver + gold, workspace.darwin)
+* creates/updates serverless Lakeflow pipeline "darwin-medallion" (silver + gold) writing to
+  databricks_catalog.databricks_schema (default workspace.darwin)
 * creates/updates job "darwin-medallion-refresh" running it hourly
 
-    darwin-deploy-pipeline [--run-now]
+    darwin-deploy-pipeline [--run-now] [--full-refresh]
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ PIPELINE_SOURCE = PROJECT_ROOT / "pipelines" / "darwin_pipeline.py"
 SCHEDULE_CRON = "0 0 * * * ?"  # hourly, Quartz syntax
 
 
-def deploy(db: DatabricksClient) -> str:
+def deploy(db: DatabricksClient, catalog: str, schema: str) -> str:
     folder = f"/Workspace/Users/{db.current_user}/darwin"
     source_path = f"{folder}/{PIPELINE_SOURCE.name}"
     db.api("POST", "/api/2.0/workspace/mkdirs", {"path": folder})
@@ -36,8 +37,10 @@ def deploy(db: DatabricksClient) -> str:
     log.info("Uploaded %s", source_path)
 
     settings = {
-        "name": PIPELINE_NAME, "serverless": True, "catalog": "workspace", "schema": "darwin",
+        "name": PIPELINE_NAME, "serverless": True, "catalog": catalog, "schema": schema,
         "continuous": False, "development": False, "channel": "CURRENT",
+        # Read by the pipeline code to find bronze and the reference tables
+        "configuration": {"darwin.schema": f"{catalog}.{schema}"},
         "libraries": [{"file": {"path": source_path}}],
     }
     pipelines = db.api("GET", "/api/2.0/pipelines?max_results=100").get("statuses", [])
@@ -76,7 +79,7 @@ def wait_for_update(db: DatabricksClient, pipeline_id: str, update_id: str) -> s
         time.sleep(20)
 
 
-def start_update(db: DatabricksClient, pipeline_id: str, attempts: int = 5) -> str:
+def start_update(db: DatabricksClient, pipeline_id: str, full_refresh: bool = False, attempts: int = 5) -> str:
     """Starts an update, first letting any running one (e.g. the hourly job) finish."""
     for _ in range(attempts):
         latest = db.api("GET", f"/api/2.0/pipelines/{pipeline_id}").get("latest_updates", [])
@@ -84,15 +87,16 @@ def start_update(db: DatabricksClient, pipeline_id: str, attempts: int = 5) -> s
             log.info("Waiting for running update %s", latest[0]["update_id"])
             wait_for_update(db, pipeline_id, latest[0]["update_id"])
         try:
-            return db.api("POST", f"/api/2.0/pipelines/{pipeline_id}/updates", {})["update_id"]
+            return db.api("POST", f"/api/2.0/pipelines/{pipeline_id}/updates",
+                          {"full_refresh": full_refresh})["update_id"]
         except DatabricksError as e:
             if "ACTIVE_UPDATE_EXISTS" not in str(e):
                 raise
     raise DatabricksError(f"Pipeline {pipeline_id} stayed busy; try again later")
 
 
-def run_and_wait(db: DatabricksClient, pipeline_id: str) -> bool:
-    update_id = start_update(db, pipeline_id)
+def run_and_wait(db: DatabricksClient, pipeline_id: str, full_refresh: bool = False) -> bool:
+    update_id = start_update(db, pipeline_id, full_refresh)
     log.info("Started pipeline update %s", update_id)
     state = wait_for_update(db, pipeline_id, update_id)
     log.info("Pipeline update %s", state)
@@ -108,11 +112,14 @@ def main() -> None:
     logging.basicConfig(format="%(asctime)s %(levelname)s\t%(message)s", level=logging.INFO)
     parser = argparse.ArgumentParser(description="Deploy the Darwin medallion pipeline to Databricks")
     parser.add_argument("--run-now", action="store_true", help="run the pipeline once and wait for it")
+    parser.add_argument("--full-refresh", action="store_true",
+                        help="with --run-now: rebuild silver and gold from all of bronze (needed after schema changes)")
     args = parser.parse_args()
 
-    db = DatabricksClient.from_settings(Settings())
-    pipeline_id = deploy(db)
-    if args.run_now and not run_and_wait(db, pipeline_id):
+    settings = Settings()
+    db = DatabricksClient.from_settings(settings)
+    pipeline_id = deploy(db, settings.catalog, settings.schema)
+    if args.run_now and not run_and_wait(db, pipeline_id, args.full_refresh):
         sys.exit(1)
 
 

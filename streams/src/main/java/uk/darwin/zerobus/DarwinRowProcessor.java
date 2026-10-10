@@ -60,9 +60,9 @@ public class DarwinRowProcessor implements Processor<String, String, Void, Void>
             putLong(row, "sequence_number", jmsProperty(properties, "SequenceNumber"));
             row.put("message_type", textOrNull(jmsProperty(properties, "MessageType")));
             // Delta TIMESTAMP columns are sent as microseconds since the epoch
-            row.put("jms_timestamp", TimeUnit.MILLISECONDS.toMicros(in.path("timestamp").asLong()));
+            row.put("published_timestamp", TimeUnit.MILLISECONDS.toMicros(in.path("timestamp").asLong()));
             row.put("ingested_at", TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis()));
-            row.put("xml", gunzip(Base64.getDecoder().decode(in.path("bytes").asText())));
+            row.put("message_xml", gunzip(Base64.getDecoder().decode(in.path("bytes").asText())));
 
             sink.ingest(row.toString());
         } catch (IOException e) {

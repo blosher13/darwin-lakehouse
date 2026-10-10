@@ -1,16 +1,16 @@
 /// Darwin locations: TIPLOC -> station name and CRS code.
 table dim_location
 
-	column tiploc
+	column location_code
 		dataType: string
 		isKey
 		summarizeBy: none
-		sourceColumn: tiploc
+		sourceColumn: location_code
 
-	column crs
+	column station_code
 		dataType: string
 		summarizeBy: none
-		sourceColumn: crs
+		sourceColumn: station_code
 
 	column Station
 		dataType: string
@@ -22,9 +22,9 @@ table dim_location
 		source =
 				let
 				    Source = Databricks.Catalogs(DatabricksHost, DatabricksHttpPath, [Catalog = null, Database = null, EnableAutomaticProxyDiscovery = null]),
-				    Catalog = Source{[Name = "workspace", Kind = "Database"]}[Data],
-				    Schema = Catalog{[Name = "darwin", Kind = "Schema"]}[Data],
+				    Catalog = Source{[Name = DatabricksCatalog, Kind = "Database"]}[Data],
+				    Schema = Catalog{[Name = DatabricksSchema, Kind = "Schema"]}[Data],
 				    Locations = Schema{[Name = "locations", Kind = "Table"]}[Data],
-				    Selected = Table.SelectColumns(Locations, {"tiploc", "crs", "location_name"})
+				    Selected = Table.SelectColumns(Locations, {"location_code", "station_code", "location_name"})
 				in
 				    Selected

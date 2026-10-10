@@ -1,7 +1,16 @@
-/// Databricks workspace hostname (no https://). Change in Transform data > Edit parameters.
-expression DatabricksHost = "dbc-43db7be9-e8fd.cloud.databricks.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+/// Databricks workspace hostname without https:// - e.g. dbc-1a2b3c4d-5e6f.cloud.databricks.com
+/// (SQL Warehouses > your warehouse > Connection details > Server hostname).
+expression DatabricksHost = "<your-workspace>.cloud.databricks.com" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	annotation PBI_ResultType = Text
 
-/// HTTP path of the SQL warehouse (SQL Warehouses > Connection details).
-expression DatabricksHttpPath = "/sql/1.0/warehouses/e26780c03dd20ee1" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+/// HTTP path of the SQL warehouse (SQL Warehouses > your warehouse > Connection details > HTTP path).
+expression DatabricksHttpPath = "/sql/1.0/warehouses/<warehouse-id>" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	annotation PBI_ResultType = Text
+
+/// Unity Catalog catalog holding the Darwin tables (databricks_catalog in .env).
+expression DatabricksCatalog = "workspace" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	annotation PBI_ResultType = Text
+
+/// Schema holding the Darwin tables (databricks_schema in .env).
+expression DatabricksSchema = "darwin" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	annotation PBI_ResultType = Text

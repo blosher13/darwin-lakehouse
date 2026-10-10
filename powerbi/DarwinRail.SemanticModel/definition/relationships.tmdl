@@ -1,15 +1,15 @@
 relationship fact_location
-	fromColumn: fact_train_calls.tiploc
-	toColumn: dim_location.tiploc
+	fromColumn: fact_train_calls.location_code
+	toColumn: dim_location.location_code
 
 relationship fact_operator
-	fromColumn: fact_train_calls.toc
-	toColumn: dim_operator.toc
+	fromColumn: fact_train_calls.operator_code
+	toColumn: dim_operator.operator_code
 
 relationship fact_late_reason
 	fromColumn: fact_train_calls.late_reason_code
-	toColumn: dim_late_reason.code
+	toColumn: dim_late_reason.reason_code
 
 relationship fact_date
-	fromColumn: fact_train_calls.ssd
+	fromColumn: fact_train_calls.scheduled_start_date
 	toColumn: dim_date.Date

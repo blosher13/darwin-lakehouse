@@ -31,36 +31,41 @@ log = logging.getLogger("darwin_lakehouse.reference")
 
 BUCKET = "darwin.xmltimetable"
 PREFIX = "PPTimetable/"
-SCHEMA = "workspace.darwin"
-VOLUME = "/Volumes/workspace/darwin/timetable_files"
 KEEP_VOLUME_DAYS = 7
 
 REFERENCE_TABLES = {
-    "locations": ("tiploc STRING, crs STRING, toc STRING, location_name STRING",
-                  "Darwin locations: TIPLOC -> CRS code and name"),
-    "operators": ("toc STRING, toc_name STRING, url STRING", "Train operating companies"),
-    "late_reasons": ("code STRING, reason_text STRING", "Darwin late-running reason codes"),
-    "cancellation_reasons": ("code STRING, reason_text STRING", "Darwin cancellation reason codes"),
-    "vias": ("at_crs STRING, destination_tiploc STRING, loc1_tiploc STRING, loc2_tiploc STRING, via_text STRING",
+    "locations": ("location_code STRING, station_code STRING, operator_code STRING, location_name STRING",
+                  "Darwin locations: location code (TIPLOC) -> station code (CRS) and name"),
+    "operators": ("operator_code STRING, operator_name STRING, website STRING", "Train operating companies"),
+    "late_reasons": ("reason_code STRING, reason_text STRING", "Darwin late-running reason codes"),
+    "cancellation_reasons": ("reason_code STRING, reason_text STRING", "Darwin cancellation reason codes"),
+    "vias": ("display_station_code STRING, destination_location_code STRING, first_via_location_code STRING, "
+             "second_via_location_code STRING, via_text STRING",
              "Via texts shown on departure boards"),
-    "cis_sources": ("code STRING, name STRING", "Customer Information System sources"),
+    "customer_information_system_sources": ("source_code STRING, source_name STRING",
+                                            "Customer Information System (CIS) sources"),
 }
 
 TIMETABLE_TABLES = {
     "schedules": (
-        "rid STRING, uid STRING, headcode STRING, ssd DATE, toc STRING, train_category STRING, status STRING, "
-        "is_passenger BOOLEAN, is_charter BOOLEAN, is_q_train BOOLEAN, is_deleted BOOLEAN, is_cancelled BOOLEAN, "
-        "cancel_reason_code STRING, cancel_reason_tiploc STRING, origin_tiploc STRING, origin_departure STRING, "
-        "destination_tiploc STRING, destination_arrival STRING, calling_points INT",
-        "Darwin planned journeys, one row per rid"),
+        "train_service_id STRING, schedule_id STRING, headcode STRING, scheduled_start_date DATE, "
+        "operator_code STRING, train_category STRING, schedule_status STRING, is_passenger_service BOOLEAN, "
+        "is_charter BOOLEAN, runs_as_required BOOLEAN, is_deleted BOOLEAN, is_cancelled BOOLEAN, "
+        "cancellation_reason_code STRING, cancellation_reason_location_code STRING, origin_location_code STRING, "
+        "origin_scheduled_departure STRING, destination_location_code STRING, "
+        "destination_scheduled_arrival STRING, calling_point_count INT",
+        "Darwin planned journeys, one row per train service"),
     "schedule_locations": (
-        "rid STRING, ssd DATE, seq INT, tiploc STRING, location_type STRING, activity STRING, "
-        "planned_activity STRING, platform STRING, pta STRING, ptd STRING, wta STRING, wtd STRING, wtp STRING, "
-        "is_cancelled BOOLEAN, false_destination_tiploc STRING, route_delay INT",
-        "Darwin planned calling points in route order (seq)"),
+        "train_service_id STRING, scheduled_start_date DATE, sequence INT, location_code STRING, "
+        "location_type STRING, activity STRING, planned_activity STRING, platform STRING, "
+        "public_scheduled_arrival STRING, public_scheduled_departure STRING, working_scheduled_arrival STRING, "
+        "working_scheduled_departure STRING, working_scheduled_pass STRING, is_cancelled BOOLEAN, "
+        "false_destination_location_code STRING, route_delay INT",
+        "Darwin planned calling points in route order (sequence)"),
     "associations": (
-        "main_rid STRING, assoc_rid STRING, category STRING, tiploc STRING, is_cancelled BOOLEAN, "
-        "is_deleted BOOLEAN, main_time STRING, assoc_time STRING",
+        "main_train_service_id STRING, associated_train_service_id STRING, association_category STRING, "
+        "location_code STRING, is_cancelled BOOLEAN, is_deleted BOOLEAN, main_scheduled_time STRING, "
+        "associated_scheduled_time STRING",
         "Darwin associations: joins (JJ), splits (VV) and next workings (NP)"),
 }
 
@@ -69,9 +74,17 @@ def _source(folder: str, table: str, schema: str) -> str:
     return f"read_files('{folder}/{table}.json.gz', format => 'json', schema => '{schema}')"
 
 
+def decoded_views_sql(schema: str) -> str:
+    """decoded_views.sql with {schema} replaced by the fully qualified schema name."""
+    template = resources.files("darwin_lakehouse.reference").joinpath("decoded_views.sql").read_text()
+    return template.replace("{schema}", schema)
+
+
 class ReferenceSync:
     def __init__(self, settings: Settings):
         self.db = DatabricksClient.from_settings(settings)
+        self.schema = f"{settings.catalog}.{settings.schema}"
+        self.volume = f"/Volumes/{settings.catalog}/{settings.schema}/timetable_files"
         self.s3 = boto3.client(
             "s3", region_name="eu-west-1",
             aws_access_key_id=settings.require("darwin_s3_access_key"),
@@ -83,14 +96,15 @@ class ReferenceSync:
 
     def run(self) -> None:
         timetable_id = self.latest_timetable_id()
-        self.db.sql(f"CREATE VOLUME IF NOT EXISTS {SCHEMA}.timetable_files")
-        self.db.sql(f"CREATE TABLE IF NOT EXISTS {SCHEMA}.timetable_loads (timetable_id STRING, loaded_at TIMESTAMP)")
-        if self.db.sql(f"SELECT 1 FROM {SCHEMA}.timetable_loads WHERE timetable_id = '{timetable_id}'"):
+        self.db.sql(f"CREATE VOLUME IF NOT EXISTS {self.schema}.timetable_files")
+        self.db.sql(f"CREATE TABLE IF NOT EXISTS {self.schema}.timetable_loads "
+                    f"(timetable_id STRING, loaded_at TIMESTAMP)")
+        if self.db.sql(f"SELECT 1 FROM {self.schema}.timetable_loads WHERE timetable_id = '{timetable_id}'"):
             log.info("Timetable %s already loaded", timetable_id)
             return
 
         log.info("Loading timetable %s", timetable_id)
-        folder = f"{VOLUME}/timetable_id={timetable_id}"
+        folder = f"{self.volume}/timetable_id={timetable_id}"
         with tempfile.TemporaryDirectory() as tmp:
             self._extract(timetable_id, Path(tmp))
             for f in Path(tmp).glob("*.json.gz"):
@@ -98,8 +112,8 @@ class ReferenceSync:
         log.info("Uploaded to %s", folder)
 
         self._load(folder)
-        self.db.sql_script(resources.files("darwin_lakehouse.reference").joinpath("decoded_views.sql").read_text())
-        self.db.sql(f"INSERT INTO {SCHEMA}.timetable_loads VALUES ('{timetable_id}', current_timestamp())")
+        self.db.sql_script(decoded_views_sql(self.schema))
+        self.db.sql(f"INSERT INTO {self.schema}.timetable_loads VALUES ('{timetable_id}', current_timestamp())")
         self._prune_volume()
         log.info("Timetable %s loaded", timetable_id)
 
@@ -125,25 +139,26 @@ class ReferenceSync:
 
     def _load(self, folder: str) -> None:
         for table, (schema, comment) in REFERENCE_TABLES.items():
-            self.db.sql(f"CREATE OR REPLACE TABLE {SCHEMA}.{table} COMMENT '{comment}' AS "
+            self.db.sql(f"CREATE OR REPLACE TABLE {self.schema}.{table} COMMENT '{comment}' AS "
                         f"SELECT * FROM {_source(folder, table, schema)}")
 
-        # Timetables accumulate across days (a rid is unique to one day), so history stays joinable
+        # Timetables accumulate across days (a train_service_id is unique to one day), so history stays joinable
         for table, (schema, comment) in TIMETABLE_TABLES.items():
-            cluster = " CLUSTER BY (ssd, rid)" if table != "associations" else ""
-            self.db.sql(f"CREATE TABLE IF NOT EXISTS {SCHEMA}.{table} ({schema}) COMMENT '{comment}'{cluster}")
+            cluster = " CLUSTER BY (scheduled_start_date, train_service_id)" if table != "associations" else ""
+            self.db.sql(f"CREATE TABLE IF NOT EXISTS {self.schema}.{table} ({schema}) COMMENT '{comment}'{cluster}")
 
         schedules = _source(folder, "schedules", TIMETABLE_TABLES["schedules"][0])
-        self.db.sql(f"MERGE INTO {SCHEMA}.schedules t USING (SELECT * FROM {schedules}) s ON t.rid = s.rid "
+        self.db.sql(f"MERGE INTO {self.schema}.schedules t USING (SELECT * FROM {schedules}) s "
+                    f"ON t.train_service_id = s.train_service_id "
                     f"WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *")
-        for table, key in (("schedule_locations", "rid"), ("associations", "main_rid")):
-            self.db.sql(f"DELETE FROM {SCHEMA}.{table} WHERE {key} IN (SELECT rid FROM {schedules})")
-            self.db.sql(f"INSERT INTO {SCHEMA}.{table} "
+        for table, key in (("schedule_locations", "train_service_id"), ("associations", "main_train_service_id")):
+            self.db.sql(f"DELETE FROM {self.schema}.{table} WHERE {key} IN (SELECT train_service_id FROM {schedules})")
+            self.db.sql(f"INSERT INTO {self.schema}.{table} "
                         f"SELECT * FROM {_source(folder, table, TIMETABLE_TABLES[table][0])}")
         log.info("Loaded reference and timetable tables")
 
     def _prune_volume(self) -> None:
-        folders = sorted(e["path"] for e in self.db.list_directory(VOLUME) if e.get("is_directory"))
+        folders = sorted(e["path"] for e in self.db.list_directory(self.volume) if e.get("is_directory"))
         for folder in folders[:-KEEP_VOLUME_DAYS]:
             self.db.delete_directory(folder)
             log.info("Pruned %s", folder)

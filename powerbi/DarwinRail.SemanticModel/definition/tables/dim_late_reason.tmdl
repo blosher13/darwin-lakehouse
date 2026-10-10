@@ -1,11 +1,11 @@
 /// Darwin late-running reasons, shortened for display ("This train has been delayed by a fault..." -> "A fault...").
 table dim_late_reason
 
-	column code
+	column reason_code
 		dataType: string
 		isKey
 		summarizeBy: none
-		sourceColumn: code
+		sourceColumn: reason_code
 
 	column Reason
 		dataType: string
@@ -17,8 +17,8 @@ table dim_late_reason
 		source =
 				let
 				    Source = Databricks.Catalogs(DatabricksHost, DatabricksHttpPath, [Catalog = null, Database = null, EnableAutomaticProxyDiscovery = null]),
-				    Catalog = Source{[Name = "workspace", Kind = "Database"]}[Data],
-				    Schema = Catalog{[Name = "darwin", Kind = "Schema"]}[Data],
+				    Catalog = Source{[Name = DatabricksCatalog, Kind = "Database"]}[Data],
+				    Schema = Catalog{[Name = DatabricksSchema, Kind = "Schema"]}[Data],
 				    Reasons = Schema{[Name = "late_reasons", Kind = "Table"]}[Data],
 				    Shortened = Table.AddColumn(Reasons, "reason", each
 				        let
@@ -27,6 +27,6 @@ table dim_late_reason
 				                [reason_text], (state, prefix) => Text.Replace(state, prefix, ""))
 				        in
 				            Text.Upper(Text.Start(text, 1)) & Text.Middle(text, 1), type text),
-				    Selected = Table.SelectColumns(Shortened, {"code", "reason"})
+				    Selected = Table.SelectColumns(Shortened, {"reason_code", "reason"})
 				in
 				    Selected

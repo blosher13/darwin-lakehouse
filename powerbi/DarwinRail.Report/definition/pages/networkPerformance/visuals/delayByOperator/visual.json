@@ -41,11 +41,11 @@
                       "Entity": "fact_train_calls"
                     }
                   },
-                  "Property": "Avg departure delay"
+                  "Property": "Average departure delay"
                 }
               },
-              "queryRef": "fact_train_calls.Avg departure delay",
-              "nativeQueryRef": "Avg departure delay"
+              "queryRef": "fact_train_calls.Average departure delay",
+              "nativeQueryRef": "Average departure delay"
             }
           ]
         }
@@ -60,7 +60,7 @@
                     "Entity": "fact_train_calls"
                   }
                 },
-                "Property": "Avg departure delay"
+                "Property": "Average departure delay"
               }
             },
             "direction": "Descending"

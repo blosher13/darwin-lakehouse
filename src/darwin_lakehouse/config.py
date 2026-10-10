@@ -32,6 +32,19 @@ class Settings:
         return value
 
     @property
+    def catalog(self) -> str:
+        """Unity Catalog catalog for all tables (Free Edition workspaces have 'workspace')."""
+        return self.get("databricks_catalog", "workspace")
+
+    @property
+    def schema(self) -> str:
+        return self.get("databricks_schema", "darwin")
+
+    def table(self, name: str) -> str:
+        """Fully qualified name, e.g. workspace.darwin.pushport_bronze."""
+        return f"{self.catalog}.{self.schema}.{name}"
+
+    @property
     def databricks_url(self) -> str:
         """Workspace URL without any path, e.g. https://dbc-123.cloud.databricks.com."""
         parsed = urlparse(self.require("databricks_host"))

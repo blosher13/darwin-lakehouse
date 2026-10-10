@@ -32,7 +32,8 @@ public class DarwinToZerobus {
         }
 
         String inputTopic = env("INPUT_TOPIC", "darwin-pushport-v16");
-        String table = env("DATABRICKS_TABLE", "workspace.darwin.pushport_bronze");
+        String table = env("DATABRICKS_TABLE", optional(secrets, "databricks_catalog", "workspace") + "."
+                + optional(secrets, "databricks_schema", "darwin") + ".pushport_bronze");
 
         ZerobusSink sink = new ZerobusSink(
                 env("ZEROBUS_ENDPOINT", required(secrets, "zerobus_endpoint")),
@@ -93,6 +94,11 @@ public class DarwinToZerobus {
             return fallback;
         }
         return value;
+    }
+
+    private static String optional(Properties props, String key, String fallback) {
+        String value = props.getProperty(key);
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 
     private static String required(Properties props, String key) throws IOException {

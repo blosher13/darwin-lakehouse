@@ -40,3 +40,15 @@ def test_append_persists_and_updates(env_file):
 
     assert settings.require("zerobus_endpoint").startswith("1.zerobus")
     assert Settings(env_file).require("zerobus_endpoint").startswith("1.zerobus")
+
+
+def test_catalog_and_schema_default_to_free_edition(env_file):
+    settings = Settings(env_file)
+    assert (settings.catalog, settings.schema) == ("workspace", "darwin")
+    assert settings.table("pushport_bronze") == "workspace.darwin.pushport_bronze"
+
+
+def test_catalog_and_schema_are_configurable(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("databricks_catalog=main\ndatabricks_schema=rail\n")
+    assert Settings(path).table("fact_train_calls") == "main.rail.fact_train_calls"

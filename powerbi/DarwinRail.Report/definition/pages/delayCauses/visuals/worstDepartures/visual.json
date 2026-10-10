@@ -110,11 +110,11 @@
                       "Entity": "fact_train_calls"
                     }
                   },
-                  "Property": "departure_delay_min"
+                  "Property": "departure_delay_minutes"
                 }
               },
-              "queryRef": "fact_train_calls.departure_delay_min",
-              "nativeQueryRef": "departure_delay_min",
+              "queryRef": "fact_train_calls.departure_delay_minutes",
+              "nativeQueryRef": "departure_delay_minutes",
               "displayName": "Minutes late"
             },
             {
@@ -144,7 +144,7 @@
                     "Entity": "fact_train_calls"
                   }
                 },
-                "Property": "departure_delay_min"
+                "Property": "departure_delay_minutes"
               }
             },
             "direction": "Descending"

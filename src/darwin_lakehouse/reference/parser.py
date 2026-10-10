@@ -38,7 +38,8 @@ def _activity(value: str | None) -> str | None:
 def parse_reference(path: str | PathLike) -> dict[str, list[Row]]:
     """Returns the reference file as lists of rows keyed by target table name."""
     tables: dict[str, list[Row]] = {name: [] for name in (
-        "locations", "operators", "late_reasons", "cancellation_reasons", "vias", "cis_sources")}
+        "locations", "operators", "late_reasons", "cancellation_reasons", "vias",
+        "customer_information_system_sources")}
     section = None
     with gzip.open(path) as f:
         for event, el in ET.iterparse(f, events=("start", "end")):
@@ -49,35 +50,42 @@ def parse_reference(path: str | PathLike) -> dict[str, list[Row]]:
                 continue
             a = el.attrib
             if tag == "LocationRef":
-                tables["locations"].append({"tiploc": a["tpl"], "crs": a.get("crs"), "toc": a.get("toc"),
-                                            "location_name": a.get("locname")})
+                tables["locations"].append({"location_code": a["tpl"], "station_code": a.get("crs"),
+                                            "operator_code": a.get("toc"), "location_name": a.get("locname")})
             elif tag == "TocRef":
-                tables["operators"].append({"toc": a["toc"], "toc_name": a.get("tocname"), "url": a.get("url")})
+                tables["operators"].append({"operator_code": a["toc"], "operator_name": a.get("tocname"),
+                                            "website": a.get("url")})
             elif tag == "Reason":
                 table = "late_reasons" if section == "LateRunningReasons" else "cancellation_reasons"
-                tables[table].append({"code": a["code"], "reason_text": a.get("reasontext")})
+                tables[table].append({"reason_code": a["code"], "reason_text": a.get("reasontext")})
             elif tag == "Via":
-                tables["vias"].append({"at_crs": a.get("at"), "destination_tiploc": a.get("dest"),
-                                       "loc1_tiploc": a.get("loc1"), "loc2_tiploc": a.get("loc2"),
+                tables["vias"].append({"display_station_code": a.get("at"),
+                                       "destination_location_code": a.get("dest"),
+                                       "first_via_location_code": a.get("loc1"),
+                                       "second_via_location_code": a.get("loc2"),
                                        "via_text": a.get("viatext")})
             elif tag == "CISSource":
-                tables["cis_sources"].append({"code": a["code"], "name": a.get("name")})
+                tables["customer_information_system_sources"].append(
+                    {"source_code": a["code"], "source_name": a.get("name")})
             el.clear()
     return tables
 
 
 def _calling_point(seq: int, tag: str, a: dict[str, str]) -> Row:
     return {
-        "seq": seq,
-        "tiploc": a["tpl"],
+        "sequence": seq,
+        "location_code": a["tpl"],
         "location_type": tag,
         "activity": _activity(a.get("act")),
         "planned_activity": _activity(a.get("planAct")),
         "platform": a.get("plat"),
-        "pta": a.get("pta"), "ptd": a.get("ptd"),
-        "wta": a.get("wta"), "wtd": a.get("wtd"), "wtp": a.get("wtp"),
+        "public_scheduled_arrival": a.get("pta"),
+        "public_scheduled_departure": a.get("ptd"),
+        "working_scheduled_arrival": a.get("wta"),
+        "working_scheduled_departure": a.get("wtd"),
+        "working_scheduled_pass": a.get("wtp"),
         "is_cancelled": _bool(a.get("can")),
-        "false_destination_tiploc": a.get("fd"),
+        "false_destination_location_code": a.get("fd"),
         "route_delay": int(a.get("rdelay", 0)),
     }
 
@@ -96,22 +104,25 @@ def _schedule(a: dict[str, str], stops: list[Row], cancel_reason: Row | None) ->
     origin = _endpoint(stops, ORIGINS, last=False)
     dest = _endpoint(stops, DESTINATIONS, last=True)
     return {
-        "rid": a["rid"], "uid": a["uid"], "headcode": a.get("trainId"), "ssd": a["ssd"], "toc": a.get("toc"),
+        "train_service_id": a["rid"], "schedule_id": a["uid"], "headcode": a.get("trainId"),
+        "scheduled_start_date": a["ssd"], "operator_code": a.get("toc"),
         # Defaults below are the XSD defaults (rttiCTTSchema_v8.xsd) for omitted attributes
         "train_category": a.get("trainCat", "OO"),
-        "status": a.get("status", "P"),
-        "is_passenger": _bool(a.get("isPassengerSvc"), default=True),
+        "schedule_status": a.get("status", "P"),
+        "is_passenger_service": _bool(a.get("isPassengerSvc"), default=True),
         "is_charter": _bool(a.get("isCharter")),
-        "is_q_train": _bool(a.get("qtrain")),
+        "runs_as_required": _bool(a.get("qtrain")),
         "is_deleted": _bool(a.get("deleted")),
         "is_cancelled": _bool(a.get("can")),
-        "cancel_reason_code": cancel_reason["code"] if cancel_reason else None,
-        "cancel_reason_tiploc": cancel_reason["tiploc"] if cancel_reason else None,
-        "origin_tiploc": origin["tiploc"] if origin else None,
-        "origin_departure": (origin["ptd"] or origin["wtd"]) if origin else None,
-        "destination_tiploc": dest["tiploc"] if dest else None,
-        "destination_arrival": (dest["pta"] or dest["wta"]) if dest else None,
-        "calling_points": len(stops),
+        "cancellation_reason_code": cancel_reason["code"] if cancel_reason else None,
+        "cancellation_reason_location_code": cancel_reason["location_code"] if cancel_reason else None,
+        "origin_location_code": origin["location_code"] if origin else None,
+        "origin_scheduled_departure": (origin["public_scheduled_departure"]
+                                       or origin["working_scheduled_departure"]) if origin else None,
+        "destination_location_code": dest["location_code"] if dest else None,
+        "destination_scheduled_arrival": (dest["public_scheduled_arrival"]
+                                          or dest["working_scheduled_arrival"]) if dest else None,
+        "calling_point_count": len(stops),
     }
 
 
@@ -130,19 +141,20 @@ def iter_timetable(path: str | PathLike) -> Iterator[tuple[str, Row]]:
             if tag in CALLING_POINTS:
                 stops.append(_calling_point(len(stops), tag, a))
             elif tag == "cancelReason":
-                cancel_reason = {"code": el.text, "tiploc": a.get("tiploc")}
+                cancel_reason = {"code": el.text, "location_code": a.get("tiploc")}
             elif tag == "Journey":
                 yield "schedules", _schedule(a, stops, cancel_reason)
                 for stop in stops:
-                    yield "schedule_locations", {"rid": a["rid"], "ssd": a["ssd"], **stop}
+                    yield "schedule_locations", {"train_service_id": a["rid"],
+                                                 "scheduled_start_date": a["ssd"], **stop}
                 stops, cancel_reason = [], None
                 el.clear()
             elif tag == "Association":
                 main, assoc = el.find("{*}main").attrib, el.find("{*}assoc").attrib
                 yield "associations", {
-                    "main_rid": main["rid"], "assoc_rid": assoc["rid"], "category": a["category"],
-                    "tiploc": a["tiploc"], "is_cancelled": _bool(a.get("isCancelled")),
-                    "is_deleted": _bool(a.get("isDeleted")),
-                    "main_time": _first_time(main), "assoc_time": _first_time(assoc),
+                    "main_train_service_id": main["rid"], "associated_train_service_id": assoc["rid"],
+                    "association_category": a["category"], "location_code": a["tiploc"],
+                    "is_cancelled": _bool(a.get("isCancelled")), "is_deleted": _bool(a.get("isDeleted")),
+                    "main_scheduled_time": _first_time(main), "associated_scheduled_time": _first_time(assoc),
                 }
                 el.clear()

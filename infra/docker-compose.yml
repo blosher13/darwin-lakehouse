@@ -87,7 +87,6 @@ services:
     environment:
       BOOTSTRAP_SERVERS: kafka:29092
       INPUT_TOPIC: darwin-pushport-v16
-      DATABRICKS_TABLE: workspace.darwin.pushport_bronze
 
   # Daily Darwin reference + timetable files: S3 -> Databricks Volume -> Delta tables
   darwin-reference-sync:

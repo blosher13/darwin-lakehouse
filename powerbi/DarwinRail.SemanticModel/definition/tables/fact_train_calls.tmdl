@@ -2,16 +2,16 @@
 table fact_train_calls
 
 	/// Distinct trains (RIDs) in the current filter context.
-	measure Trains = DISTINCTCOUNT(fact_train_calls[rid])
+	measure Trains = DISTINCTCOUNT(fact_train_calls[train_service_id])
 		formatString: #,0
 
 	/// Passenger departures from public stops with an actual departure time.
 	measure Departures = ```
 			CALCULATE (
 			    COUNTROWS ( fact_train_calls ),
-			    NOT ISBLANK ( fact_train_calls[departure_delay_min] ),
+			    NOT ISBLANK ( fact_train_calls[departure_delay_minutes] ),
 			    fact_train_calls[call_type] = "Public stop",
-			    fact_train_calls[is_passenger] = TRUE ()
+			    fact_train_calls[is_passenger_service] = TRUE ()
 			)
 			```
 		formatString: #,0
@@ -19,27 +19,27 @@ table fact_train_calls
 	/// Share of departures leaving at or before the public timetable time (to the minute).
 	measure 'On time %' = ```
 			DIVIDE (
-			    CALCULATE ( [Departures], fact_train_calls[departure_delay_min] <= 0 ),
+			    CALCULATE ( [Departures], fact_train_calls[departure_delay_minutes] <= 0 ),
 			    [Departures]
 			)
 			```
 		formatString: 0.0%
 
 	/// Share of departures within 5 minutes of the public timetable (PPM-style threshold).
-	measure 'Within 5 min %' = ```
+	measure 'Within 5 minutes %' = ```
 			DIVIDE (
-			    CALCULATE ( [Departures], fact_train_calls[departure_delay_min] <= 5 ),
+			    CALCULATE ( [Departures], fact_train_calls[departure_delay_minutes] <= 5 ),
 			    [Departures]
 			)
 			```
 		formatString: 0.0%
 
 	/// Mean departure delay in minutes (early departures count as negative).
-	measure 'Avg departure delay' = ```
+	measure 'Average departure delay' = ```
 			CALCULATE (
-			    AVERAGE ( fact_train_calls[departure_delay_min] ),
+			    AVERAGE ( fact_train_calls[departure_delay_minutes] ),
 			    fact_train_calls[call_type] = "Public stop",
-			    fact_train_calls[is_passenger] = TRUE ()
+			    fact_train_calls[is_passenger_service] = TRUE ()
 			)
 			```
 		formatString: 0.0" min"
@@ -47,10 +47,10 @@ table fact_train_calls
 	/// Total minutes late across late departures.
 	measure 'Delay minutes' = ```
 			CALCULATE (
-			    SUM ( fact_train_calls[departure_delay_min] ),
-			    fact_train_calls[departure_delay_min] > 0,
+			    SUM ( fact_train_calls[departure_delay_minutes] ),
+			    fact_train_calls[departure_delay_minutes] > 0,
 			    fact_train_calls[call_type] = "Public stop",
-			    fact_train_calls[is_passenger] = TRUE ()
+			    fact_train_calls[is_passenger_service] = TRUE ()
 			)
 			```
 		formatString: #,0
@@ -58,7 +58,7 @@ table fact_train_calls
 	/// Trains carrying a Darwin late-running reason.
 	measure 'Delayed trains' = ```
 			CALCULATE (
-			    DISTINCTCOUNT ( fact_train_calls[rid] ),
+			    DISTINCTCOUNT ( fact_train_calls[train_service_id] ),
 			    NOT ISBLANK ( fact_train_calls[late_reason_code] )
 			)
 			```
@@ -70,38 +70,38 @@ table fact_train_calls
 		summarizeBy: none
 		sourceColumn: call_id
 
-	column rid
+	column train_service_id
 		dataType: string
 		summarizeBy: none
-		sourceColumn: rid
+		sourceColumn: train_service_id
 
-	column ssd
+	column scheduled_start_date
 		dataType: dateTime
 		formatString: dd mmm yyyy
 		summarizeBy: none
-		sourceColumn: ssd
+		sourceColumn: scheduled_start_date
 
 	column headcode
 		dataType: string
 		summarizeBy: none
 		sourceColumn: headcode
 
-	column toc
+	column operator_code
 		dataType: string
 		isHidden
 		summarizeBy: none
-		sourceColumn: toc
+		sourceColumn: operator_code
 
 	column train_category
 		dataType: string
 		summarizeBy: none
 		sourceColumn: train_category
 
-	column is_passenger
+	column is_passenger_service
 		dataType: boolean
 		formatString: """TRUE"";""TRUE"";""FALSE"""
 		summarizeBy: none
-		sourceColumn: is_passenger
+		sourceColumn: is_passenger_service
 
 	column origin_name
 		dataType: string
@@ -113,11 +113,11 @@ table fact_train_calls
 		summarizeBy: none
 		sourceColumn: destination_name
 
-	column tiploc
+	column location_code
 		dataType: string
 		isHidden
 		summarizeBy: none
-		sourceColumn: tiploc
+		sourceColumn: location_code
 
 	column call_type
 		dataType: string
@@ -129,28 +129,28 @@ table fact_train_calls
 		summarizeBy: none
 		sourceColumn: scheduled_departure
 
-	column scheduled_ts
+	column scheduled_timestamp
 		dataType: dateTime
 		formatString: dd mmm hh:nn
 		summarizeBy: none
-		sourceColumn: scheduled_ts
+		sourceColumn: scheduled_timestamp
 
 	column actual_departure
 		dataType: string
 		summarizeBy: none
 		sourceColumn: actual_departure
 
-	column departure_delay_min
+	column departure_delay_minutes
 		dataType: int64
 		formatString: 0
 		summarizeBy: none
-		sourceColumn: departure_delay_min
+		sourceColumn: departure_delay_minutes
 
-	column arrival_delay_min
+	column arrival_delay_minutes
 		dataType: int64
 		formatString: 0
 		summarizeBy: none
-		sourceColumn: arrival_delay_min
+		sourceColumn: arrival_delay_minutes
 
 	column platform
 		dataType: string
@@ -167,13 +167,13 @@ table fact_train_calls
 		dataType: string
 		summarizeBy: none
 
-	column 'Scheduled hour' = HOUR ( fact_train_calls[scheduled_ts] )
+	column 'Scheduled hour' = HOUR ( fact_train_calls[scheduled_timestamp] )
 		dataType: int64
 		formatString: 00
 		summarizeBy: none
 
 	column 'Delay band' = ```
-			VAR d = fact_train_calls[departure_delay_min]
+			VAR d = fact_train_calls[departure_delay_minutes]
 			RETURN
 			    SWITCH (
 			        TRUE (),
@@ -191,7 +191,7 @@ table fact_train_calls
 		sortByColumn: 'Delay band order'
 
 	column 'Delay band order' = ```
-			VAR d = fact_train_calls[departure_delay_min]
+			VAR d = fact_train_calls[departure_delay_minutes]
 			RETURN
 			    SWITCH ( TRUE (), ISBLANK ( d ), BLANK (), d <= 0, 1, d <= 2, 2, d <= 5, 3, d <= 15, 4, d <= 30, 5, 6 )
 			```
@@ -204,13 +204,13 @@ table fact_train_calls
 		source =
 				let
 				    Source = Databricks.Catalogs(DatabricksHost, DatabricksHttpPath, [Catalog = null, Database = null, EnableAutomaticProxyDiscovery = null]),
-				    Catalog = Source{[Name = "workspace", Kind = "Database"]}[Data],
-				    Schema = Catalog{[Name = "darwin", Kind = "Schema"]}[Data],
+				    Catalog = Source{[Name = DatabricksCatalog, Kind = "Database"]}[Data],
+				    Schema = Catalog{[Name = DatabricksSchema, Kind = "Schema"]}[Data],
 				    Calls = Schema{[Name = "fact_train_calls", Kind = "Table"]}[Data],
 				    Selected = Table.SelectColumns(Calls, {
-				        "call_id", "rid", "ssd", "headcode", "toc", "train_category", "is_passenger",
-				        "origin_name", "destination_name", "tiploc", "call_type", "scheduled_departure",
-				        "scheduled_ts", "actual_departure", "departure_delay_min", "arrival_delay_min",
+				        "call_id", "train_service_id", "scheduled_start_date", "headcode", "operator_code", "train_category", "is_passenger_service",
+				        "origin_name", "destination_name", "location_code", "call_type", "scheduled_departure",
+				        "scheduled_timestamp", "actual_departure", "departure_delay_minutes", "arrival_delay_minutes",
 				        "platform", "late_reason_code"})
 				in
 				    Selected

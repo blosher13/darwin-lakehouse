@@ -3,6 +3,21 @@
 This is the reasoning behind the main choices in the pipeline, including the things that didn't
 work at first.
 
+## Naming
+
+Darwin's XML is dense with abbreviations (`rid`, `ssd`, `tpl`, `pta`, `wtd`, `et`, `at`…). They
+stop at the parser: every table and view column uses full words. The main mappings are
+`rid` → `train_service_id`, `uid` → `schedule_id`, `ssd` → `scheduled_start_date`,
+TIPLOC → `location_code`, CRS → `station_code`, TOC → `operator_code`,
+`pta`/`ptd` → `public_scheduled_arrival`/`_departure`, `wta`/`wtd`/`wtp` →
+`working_scheduled_arrival`/`_departure`/`_pass`, and `et`/`at` → `estimated_*`/`actual_*`.
+Code *values* (`OR`, `IP`, `TS`…) are kept as Darwin publishes them, so they can be looked up
+in Darwin's documentation.
+
+Renaming the live tables meant copying bronze into a table with the new names (the original is
+kept as `pushport_bronze_legacy`), rebuilding the reference tables from S3, and fully refreshing
+silver and gold from bronze.
+
 ## Ingestion
 
 ### Kafka Connect over the ActiveMQ OpenWire port, not STOMP
@@ -42,29 +57,37 @@ volume (`kafka-data`), with 72-hour retention.
 
 - **An explicit schema instead of inference.** The `from_xml` schema mirrors
   `rttiPPTForecasts_v3.xsd`. Times stay `STRING` because Darwin mixes `HH:MM` and `HH:MM:SS`,
-  relative to the scheduled start date. `rid` and platform are strings too (`1A` is a valid platform).
+  relative to the scheduled start date. `train_service_id` and platform are strings too (`1A` is a
+  valid platform).
 - **`FAILFAST`.** A message that doesn't match the schema fails the pipeline loudly instead of
   silently becoming a NULL row.
 - **Namespace prefixes are stripped before parsing.** Spark keeps prefixes in field names
   (`ns5:Location`), and Darwin's prefix numbering isn't a contract.
-- **Deduplication.** `dropDuplicatesWithinWatermark` on `(kafka_partition, kafka_offset)` with a
-  1-hour watermark on `ingested_at` covers the replay window above, with bounded state.
+- **Deduplication.** `dropDuplicatesWithinWatermark` on `message_id` with a 1-hour watermark on
+  `ingested_at` covers the replay window above, with bounded state.
+
+  I first deduplicated on `(kafka_partition, kafka_offset)`. That broke when the Kafka cluster was
+  recreated during a migration: offsets restarted at 0 and collided with older messages within the
+  watermark, so silver silently dropped about 30% of messages. Reconciling silver against bronze by
+  message ID exposed it. The broker's message ID is globally unique, so it's the key now, and a
+  full refresh restored the dropped rows.
 
 ## Gold
 
 TS messages are *deltas*. A message about an arrival doesn't repeat the departure estimate. For
-each train call (`rid`, TIPLOC, and the working times that identify the call, since circular
-routes visit a TIPLOC twice), gold takes the latest non-null value per field:
+each train call (`train_service_id`, `location_code`, and the working scheduled times that
+identify the call, since circular routes visit a location twice), gold takes the latest non-null
+value per field:
 
 ```sql
-max_by(dep_at, IF(dep_at IS NULL, NULL, sequence_number))
+max_by(actual_departure, IF(actual_departure IS NULL, NULL, sequence_number))
 ```
 
 Delays wrap past midnight: `pmod(actual - scheduled + 720, 1440) - 720`.
 
 **A null bug in the call key.** I built `call_id` with `concat_ws`, which *skips* NULLs. So a
-call with only a working arrival time (`wta=X`) and one with only a working departure time
-(`wtd=X`) hashed to the same key. A uniqueness check caught it, and each part is now coalesced
+call with only a working scheduled arrival of X and one with only a working scheduled departure
+of X hashed to the same key. A uniqueness check caught it, and each part is now coalesced
 to `'-'` first.
 
 ## Reference data
@@ -75,8 +98,9 @@ to `'-'` first.
 - **Getting the files into Databricks.** Free Edition's serverless compute can't use third-party
   AWS keys, so the files are downloaded outside Databricks, uploaded to a UC Volume, and loaded
   with `read_files` on the SQL warehouse.
-- **Accumulating timetables.** `schedules` is merged by `rid`, and `schedule_locations` is
-  replaced per `rid`, so older silver rows still decode after the next day's file arrives.
+- **Accumulating timetables.** `schedules` is merged by `train_service_id`, and
+  `schedule_locations` is replaced per `train_service_id`, so older silver rows still decode after
+  the next day's file arrives.
 - **Unit tests found a real edge case.** Some journeys carry both an operational and a public
   destination. The parser now prefers the public stop, the one passengers see.
 

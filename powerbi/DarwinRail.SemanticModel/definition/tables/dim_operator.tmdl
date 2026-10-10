@@ -1,25 +1,25 @@
 /// Train operating companies.
 table dim_operator
 
-	column toc
+	column operator_code
 		dataType: string
 		isKey
 		summarizeBy: none
-		sourceColumn: toc
+		sourceColumn: operator_code
 
 	column Operator
 		dataType: string
 		summarizeBy: none
-		sourceColumn: toc_name
+		sourceColumn: operator_name
 
 	partition dim_operator = m
 		mode: import
 		source =
 				let
 				    Source = Databricks.Catalogs(DatabricksHost, DatabricksHttpPath, [Catalog = null, Database = null, EnableAutomaticProxyDiscovery = null]),
-				    Catalog = Source{[Name = "workspace", Kind = "Database"]}[Data],
-				    Schema = Catalog{[Name = "darwin", Kind = "Schema"]}[Data],
+				    Catalog = Source{[Name = DatabricksCatalog, Kind = "Database"]}[Data],
+				    Schema = Catalog{[Name = DatabricksSchema, Kind = "Schema"]}[Data],
 				    Operators = Schema{[Name = "operators", Kind = "Table"]}[Data],
-				    Selected = Table.SelectColumns(Operators, {"toc", "toc_name"})
+				    Selected = Table.SelectColumns(Operators, {"operator_code", "operator_name"})
 				in
 				    Selected

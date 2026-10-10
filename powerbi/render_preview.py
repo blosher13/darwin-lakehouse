@@ -3,7 +3,7 @@
 Each query mirrors a DAX measure in the semantic model, so the images double as a check on
 the measure logic. Output goes to docs/images/ for the README.
 
-    pip install matplotlib && python powerbi/render_preview.py
+    pip install -e '.[preview]' && python powerbi/render_preview.py
 """
 
 from __future__ import annotations
@@ -18,14 +18,13 @@ from darwin_lakehouse.config import PROJECT_ROOT, Settings
 from darwin_lakehouse.databricks import DatabricksClient
 
 OUT = PROJECT_ROOT / "docs" / "images"
-SCHEMA = "workspace.darwin"
 
 # Reference palette: one data hue on a light surface, ink tokens for all text
 SURFACE, PANEL, BORDER = "#f3f2ef", "#fcfcfb", "#e4e3df"
 INK, INK_2, INK_3, GRID = "#0b0b0b", "#52514e", "#8a8984", "#e9e8e4"
 BLUE = "#2a78d6"
 
-DEPARTURES = ("call_type = 'Public stop' AND is_passenger AND departure_delay_min IS NOT NULL")
+DEPARTURES = ("call_type = 'Public stop' AND is_passenger_service AND departure_delay_minutes IS NOT NULL")
 # "This train has been delayed by a fault..." -> "A fault..." (same shortening as the Power BI model)
 _STRIPPED = "regexp_replace(reason_text, '^This (train|service) has been delayed by ', '')"
 SHORT_REASON = f"concat(upper(left({_STRIPPED}, 1)), substr({_STRIPPED}, 2))"
@@ -35,44 +34,48 @@ def query(db: DatabricksClient, sql: str) -> list[list]:
     return db.sql(sql.replace("{F}", f"{SCHEMA}.fact_train_calls").replace("{DEP}", DEPARTURES))
 
 
+SETTINGS = Settings()
+SCHEMA = f"{SETTINGS.catalog}.{SETTINGS.schema}"
+
+
 def load(db: DatabricksClient) -> dict:
     kpi = query(db, """
-        SELECT count(DISTINCT rid), count_if({DEP}),
-               avg(IF({DEP}, IF(departure_delay_min <= 5, 1, 0), NULL)),
-               avg(IF(call_type = 'Public stop' AND is_passenger, departure_delay_min, NULL)),
-               min(ssd), max(ssd)
+        SELECT count(DISTINCT train_service_id), count_if({DEP}),
+               avg(IF({DEP}, IF(departure_delay_minutes <= 5, 1, 0), NULL)),
+               avg(IF(call_type = 'Public stop' AND is_passenger_service, departure_delay_minutes, NULL)),
+               min(scheduled_start_date), max(scheduled_start_date)
         FROM {F}""")[0]
     return {
         "kpi": kpi,
         "by_hour": query(db, """
-            SELECT hour(scheduled_ts), avg(IF(departure_delay_min <= 5, 1, 0)), count(*)
+            SELECT hour(scheduled_timestamp), avg(IF(departure_delay_minutes <= 5, 1, 0)), count(*)
             FROM {F} WHERE {DEP} GROUP BY 1 HAVING count(*) >= 50 ORDER BY 1"""),
         "by_operator": query(db, f"""
-            SELECT o.toc_name, avg(f.departure_delay_min), count(*)
-            FROM {{F}} f JOIN {SCHEMA}.operators o ON o.toc = f.toc
+            SELECT o.operator_name, avg(f.departure_delay_minutes), count(*)
+            FROM {{F}} f JOIN {SCHEMA}.operators o ON o.operator_code = f.operator_code
             WHERE {{DEP}} GROUP BY 1 HAVING count(*) >= 100 ORDER BY 2 DESC LIMIT 12"""),
         "stations": query(db, f"""
-            SELECT l.location_name, l.crs, count(*), sum(greatest(f.departure_delay_min, 0)),
-                   avg(f.departure_delay_min), avg(IF(f.departure_delay_min <= 5, 1, 0))
-            FROM {{F}} f JOIN {SCHEMA}.locations l ON l.tiploc = f.tiploc
+            SELECT l.location_name, l.station_code, count(*), sum(greatest(f.departure_delay_minutes, 0)),
+                   avg(f.departure_delay_minutes), avg(IF(f.departure_delay_minutes <= 5, 1, 0))
+            FROM {{F}} f JOIN {SCHEMA}.locations l ON l.location_code = f.location_code
             WHERE {{DEP}} GROUP BY 1, 2 ORDER BY 4 DESC LIMIT 6"""),
         "reasons": query(db, f"""
-            SELECT {SHORT_REASON}, count(DISTINCT f.rid)
-            FROM {{F}} f JOIN {SCHEMA}.late_reasons r ON r.code = f.late_reason_code
+            SELECT {SHORT_REASON}, count(DISTINCT f.train_service_id)
+            FROM {{F}} f JOIN {SCHEMA}.late_reasons r ON r.reason_code = f.late_reason_code
             GROUP BY 1 ORDER BY 2 DESC LIMIT 8"""),
         "bands": query(db, """
-            SELECT CASE WHEN departure_delay_min <= 0 THEN 1 WHEN departure_delay_min <= 2 THEN 2
-                        WHEN departure_delay_min <= 5 THEN 3 WHEN departure_delay_min <= 15 THEN 4
-                        WHEN departure_delay_min <= 30 THEN 5 ELSE 6 END, count(*)
+            SELECT CASE WHEN departure_delay_minutes <= 0 THEN 1 WHEN departure_delay_minutes <= 2 THEN 2
+                        WHEN departure_delay_minutes <= 5 THEN 3 WHEN departure_delay_minutes <= 15 THEN 4
+                        WHEN departure_delay_minutes <= 30 THEN 5 ELSE 6 END, count(*)
             FROM {F} WHERE {DEP} GROUP BY 1 ORDER BY 1"""),
         "worst": query(db, f"""
-            SELECT f.headcode, o.toc_name, concat(f.origin_name, ' → ', f.destination_name), l.location_name,
-                   f.scheduled_departure, f.actual_departure, f.departure_delay_min, {SHORT_REASON}
+            SELECT f.headcode, o.operator_name, concat(f.origin_name, ' → ', f.destination_name), l.location_name,
+                   f.scheduled_departure, f.actual_departure, f.departure_delay_minutes, {SHORT_REASON}
             FROM {{F}} f
-            LEFT JOIN {SCHEMA}.operators o ON o.toc = f.toc
-            LEFT JOIN {SCHEMA}.locations l ON l.tiploc = f.tiploc
-            LEFT JOIN {SCHEMA}.late_reasons r ON r.code = f.late_reason_code
-            WHERE {{DEP}} ORDER BY f.departure_delay_min DESC LIMIT 7"""),
+            LEFT JOIN {SCHEMA}.operators o ON o.operator_code = f.operator_code
+            LEFT JOIN {SCHEMA}.locations l ON l.location_code = f.location_code
+            LEFT JOIN {SCHEMA}.late_reasons r ON r.reason_code = f.late_reason_code
+            WHERE {{DEP}} ORDER BY f.departure_delay_minutes DESC LIMIT 7"""),
     }
 
 
@@ -163,7 +166,7 @@ def network_page(d: dict, dates: str) -> plt.Figure:
     ax.set_xticks(range(0, 24, 3), [f"{h:02d}" for h in range(0, 24, 3)])
     style_axes(ax)
 
-    panel(fig, (0.5125, 0.355, 0.4685, 0.325), "Average departure delay by operator (min)")
+    panel(fig, (0.5125, 0.355, 0.4685, 0.325), "Average departure delay by operator (minutes)")
     ax = fig.add_axes((0.64, 0.385, 0.33, 0.245))
     ops = d["by_operator"][::-1]
     values = [float(r[1]) for r in ops]
@@ -178,8 +181,8 @@ def network_page(d: dict, dates: str) -> plt.Figure:
     panel(fig, (0.019, 0.03, 0.962, 0.305), "Stations ranked by total delay minutes")
     rows = [[f"{r[0]}", r[1] or "", f"{int(r[2]):,}", f"{int(r[3]):,}", f"{float(r[4]):.1f}", f"{float(r[5]):.1%}"]
             for r in d["stations"]]
-    table(fig, (0.031, 0.045, 0.938, 0.245), ["Station", "CRS", "Departures", "Delay minutes", "Avg delay",
-                                               "Within 5 min %"],
+    table(fig, (0.031, 0.045, 0.938, 0.245), ["Station", "Station code", "Departures", "Delay minutes", "Average delay",
+                                               "Within 5 minutes %"],
           rows, [0.40, 0.10, 0.125, 0.125, 0.125, 0.125], ["left", "left", "right", "right", "right", "right"])
     return fig
 
@@ -226,7 +229,7 @@ def main() -> None:
     # First available UI face, with DejaVu Sans as per-glyph fallback (e.g. for "→")
     preferred = next((f for f in ("Inter", "Helvetica Neue", "Arial") if f in installed), None)
     plt.rcParams["font.family"] = [f for f in (preferred, "DejaVu Sans") if f]
-    data = load(DatabricksClient.from_settings(Settings()))
+    data = load(DatabricksClient.from_settings(SETTINGS))
     first, last = data["kpi"][4], data["kpi"][5]
     dates = f"Service dates {first} – {last}" if first != last else f"Service date {first}"
     OUT.mkdir(parents=True, exist_ok=True)

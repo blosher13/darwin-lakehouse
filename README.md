@@ -1,6 +1,6 @@
 # Darwin Lakehouse: real-time UK rail data platform
 
-[![CI](https://github.com/OWNER/darwin-lakehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/darwin-lakehouse/actions/workflows/ci.yml)
+[![CI](https://github.com/blosher13/darwin-lakehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/blosher13/darwin-lakehouse/actions/workflows/ci.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)
 
@@ -50,7 +50,7 @@ flowchart LR
 | Layer | Table | Grain | How it's built |
 |---|---|---|---|
 | Bronze | `pushport_bronze` | one Darwin message | Kafka Streams → [Zerobus](https://github.com/databricks/zerobus-sdk) direct write; decompressed XML + JMS metadata |
-| Silver | `train_status_locations` | message × train × location | Lakeflow streaming table: XSD-driven `from_xml`, watermark dedupe |
+| Silver | `train_status_locations` | message × train × location | Lakeflow streaming table: XSD-driven `from_xml`, watermark dedupe on `message_id` |
 | Gold | `fact_train_calls` | train call (train × location × scheduled time) | Lakeflow materialized view: latest actual/estimated per field, delay minutes |
 | Reference | `locations`, `operators`, `late_reasons`, `schedules`, `schedule_locations`, … | per code / per journey | Daily S3 files, stream-parsed in Python, loaded via Volume + `read_files` |
 | Serving | `train_status_decoded` (view) | as silver | Silver joined to every lookup: readable names, reasons, delays |
@@ -76,6 +76,9 @@ flowchart LR
   The TMDL model was loaded with Microsoft's Tabular Object Model in a .NET container, and the
   report JSON was checked against Microsoft's published schemas and cross-referenced against the
   model's fields ([`validate_pbir.py`](powerbi/validate_pbir.py), run in CI).
+- **Readable data.** Darwin's abbreviations (`rid`, `ssd`, `pta`, `wtd`…) stop at the parser.
+  Every column uses full words, such as `train_service_id`, `scheduled_start_date` and
+  `public_scheduled_arrival`.
 - **One source of secrets.** A single git-ignored `.env` is mounted read-only into every
   container. Kafka Connect reads it through its `FileConfigProvider`, and setup writes generated
   credentials back to it.
@@ -106,34 +109,88 @@ tests/                     unit tests + Darwin XML fixtures
 docs/                      design decisions, images
 ```
 
-## Running it
+## Quick look (no accounts needed)
 
-**You need:**
-- a free [National Rail Data Portal](https://opendata.nationalrail.co.uk/) account subscribed to Darwin
-- a Databricks workspace (Free Edition works) and a personal access token
-- Docker and Python 3.11+
+Everything here runs offline in a couple of minutes with just Python 3.11+:
 
 ```bash
-cp .env.example .env            # fill in Darwin + Databricks credentials
+git clone https://github.com/blosher13/darwin-lakehouse.git && cd darwin-lakehouse
 python -m venv .venv && source .venv/bin/activate
-make install                    # package + dev tools
+make install                        # package + dev tools
+make check                          # ruff + 14 unit tests against Darwin XML fixtures
+python powerbi/validate_pbir.py     # Power BI files vs Microsoft schemas + model fields (needs internet)
+```
 
+Good places to start reading:
+- [`pipelines/darwin_pipeline.py`](pipelines/darwin_pipeline.py): silver and gold transformations
+- [`DarwinRowProcessor.java`](streams/src/main/java/uk/darwin/zerobus/DarwinRowProcessor.java): delivery guarantees
+- [`parser.py`](src/darwin_lakehouse/reference/parser.py): timetable parsing
+- [`powerbi/`](powerbi/): semantic model and report
+
+## Running the full pipeline
+
+### Prerequisites
+
+| | Notes |
+|---|---|
+| [National Rail Data Portal](https://opendata.nationalrail.co.uk/) account | Free. Subscribe to **Darwin**; approval can take a while. My Feeds then shows the *Darwin Topic* credentials (live feed) and the *Darwin File* S3 keys (timetables). |
+| Databricks workspace, **AWS** | [Free Edition](https://www.databricks.com/learn/free-edition) works. You need **workspace admin** (setup creates a service principal) and a personal access token. |
+| Docker | The stack uses about 3 GB of RAM; give Docker 4 GB or more. The first `make up` builds the Java app, which takes a few minutes. |
+| Python 3.11+ and `make` | |
+| Power BI Desktop (optional) | Windows only. Needed just to open the report. |
+
+### Steps
+
+After the quick-look setup above (clone, virtualenv, `make install`):
+
+```bash
+cp .env.example .env            # fill in the Darwin and Databricks values (comments explain each)
 make setup                      # schema, bronze table, service principal, Zerobus endpoint -> .env
 make up                         # Kafka, Connect, Kafka UI (localhost:8080), Streams app, reference sync
 make connectors                 # register the Darwin source connector (first run only)
-make sync                       # load today's timetable + reference data
-make deploy                     # deploy silver/gold pipeline + hourly job, run once
+make sync                       # load today's timetable + reference data (~2 min)
+make deploy                     # deploy silver/gold pipeline + hourly job, run it once (~5 min)
 make status                     # connector state and consumer lag
 ```
 
-Then open `powerbi/DarwinRail.pbip` in Power BI Desktop. See [powerbi/README.md](powerbi/README.md).
+To check it's working:
+- **Kafka:** messages arrive in the `darwin-pushport-v16` topic in Kafka UI within a minute.
+- **Databricks:** `SELECT count(*) FROM workspace.darwin.pushport_bronze` keeps growing.
+- **Gold:** `fact_train_calls` fills after `make deploy`.
 
-## Testing
+For Power BI, open `powerbi/DarwinRail.pbip` and set the connection parameters. See
+[powerbi/README.md](powerbi/README.md).
 
-```bash
-make check                          # ruff + pytest
-python powerbi/validate_pbir.py     # Power BI files vs Microsoft schemas + model fields
-```
+### Configuration
+
+All settings live in `.env`; [`.env.example`](.env.example) documents every key.
+- **Catalog and schema:** `databricks_catalog` (default `workspace`, the Free Edition catalog)
+  and `databricks_schema` (default `darwin`) control where every table lives. The catalog must
+  already exist.
+- **Generated values:** `make setup` writes the service principal's credentials and the Zerobus
+  endpoint back into `.env`.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Connect logs show `Invalid username or password` | Use the **Darwin Topic** username and password from My Feeds, not your portal login. |
+| Connector says `RUNNING` but no messages arrive | Check `docker compose -f infra/docker-compose.yml logs connect \| grep ERROR`. The connector reports `RUNNING` even when the broker connection is failing. |
+| `make setup` fails with a permission error | Service principals need **workspace admin**. |
+| `CATALOG_NOT_FOUND` / `SCHEMA_NOT_FOUND` | Set `databricks_catalog` to a catalog that exists. Creating catalogs needs metastore admin, so setup doesn't try. |
+| Pipeline update fails with `RESOURCE_EXHAUSTED` | Free Edition limits concurrent serverless compute. Let the SQL warehouse stop (or stop it), then rerun `make deploy`. The hourly job retries by itself. |
+| Streams app can't reach Zerobus (Azure/GCP workspace) | `make setup` derives the AWS endpoint format. Set `zerobus_endpoint` in `.env` to your cloud's Zerobus endpoint, and setup will leave it alone. |
+| Connector stops after 30 days | The Confluent ActiveMQ connector is a 30-day trial without a licence key. |
+
+### Stopping
+
+- **Pause:** `make down` stops the containers and keeps Kafka's data. While Connect is down,
+  Darwin holds your messages on its durable subscription.
+- **Remove the connector:** before you stop for good, run
+  `curl -X DELETE localhost:8083/connectors/darwin-pushport` so you don't leave a durable
+  subscription behind on Darwin's broker.
+- **Stop Databricks costs:** pause the `darwin-medallion-refresh` job in Databricks to stop the
+  hourly pipeline runs.
 
 ## Limitations and next steps
 

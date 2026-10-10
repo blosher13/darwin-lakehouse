@@ -16,4 +16,4 @@ table dim_date
 
 	partition dim_date = calculated
 		mode: import
-		source = CALENDAR ( MIN ( fact_train_calls[ssd] ), MAX ( fact_train_calls[ssd] ) )
+		source = CALENDAR ( MIN ( fact_train_calls[scheduled_start_date] ), MAX ( fact_train_calls[scheduled_start_date] ) )
