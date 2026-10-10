@@ -28,10 +28,27 @@ RAW = "https://raw.githubusercontent.com/microsoft/json-schemas/main/"
 
 @cache
 def fetch(uri: str) -> dict:
+    return published(uri)[1]
+
+
+@cache
+def published(uri: str) -> tuple[str, dict]:
+    """(uri, schema) for the schema, or for the newest older version if it isn't published yet."""
     # developer.microsoft.com serves the same files as the GitHub repo; GitHub is faster and stable
     response = requests.get(uri.replace(PUBLIC, RAW), timeout=30)
+    if response.status_code == 404 and (older := previous_version(uri)):
+        # Power BI Desktop can write schema versions before Microsoft publishes them
+        return published(older)
     response.raise_for_status()
-    return response.json()
+    return uri, response.json()
+
+
+def previous_version(uri: str) -> str | None:
+    """The same schema URI one minor version lower (.../2.13.0/... -> .../2.12.0/...), if any."""
+    m = re.search(r"/(\d+)\.(\d+)\.\d+/", uri)
+    if not m or m.group(2) == "0":
+        return None
+    return f"{uri[:m.start()]}/{m.group(1)}.{int(m.group(2)) - 1}.0/{uri[m.end():]}"
 
 
 def retrieve(uri: str) -> Resource:
@@ -88,7 +105,10 @@ def main() -> int:
         if not schema_uri:
             print(f"SKIP {path.relative_to(HERE)} (no $schema)")
             continue
-        schema = fetch(schema_uri)
+        found_uri, schema = published(schema_uri)
+        if found_uri != schema_uri:
+            print(f"WARN {path.relative_to(HERE)}: {schema_uri} is not published; using {found_uri}")
+            schema_uri = document["$schema"] = found_uri
         validator = Draft7Validator({**schema, "$id": schema_uri}, registry=registry)
         errors = sorted(validator.iter_errors(document), key=lambda e: list(e.path))
         for error in errors:
